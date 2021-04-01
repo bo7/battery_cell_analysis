@@ -1,8 +1,27 @@
-import dash
-import dash_html_components as html
-import dash_core_components as dcc
+
 import plotly.express as px
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.cbook import boxplot_stats
+import sqlite3
+import numpy as np
+import itertools
+from datetime import datetime
+import argparse
+import os
+import sys
+import argparse
+import base64
+import io
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import plotly.express as px
+import plotly.graph_objs as go
+import pandas as pd
+import dash_bootstrap_components as dbc
+from dash.dependencies import Input, Output, State
+import dash_table
 
 def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./daten/", thick = 1):
     fig, axs = plt.subplots(len(df)-1,2, figsize=(16, 10), facecolor='w', edgecolor='k')
@@ -221,17 +240,57 @@ app.layout = html.Div(children=[
                                children=[
                                   html.Div(className='four columns div-user-controls'
                                   ,children = [
-                                    html.H2('Dash - STOCK PRICES'),
-                                    html.P('''Visualising time series with Plotly - Dash'''),
-                                    html.P('''Pick one or more stocks from the dropdown below.'''),
-                                     html.Div(className='div-for-dropdown'),
+                                    html.H2('Sileo cell analysis'),
+                            
+                                     html.P(html.Div(html.H5("Select db")))
+                                    , dcc.Upload(
+                                        id="upload-data",
+                                        children=html.Div(
+                                           [dbc.Button("Primary", outline=True, size ="lg", color="primary", className="mr-1")]
+                                        ),
+                                        
+                                        multiple=True,
+                                        )
+                                        ,html.Div(id='output-data-upload')
                                 ]),  # Define the left element
-                                  html.Div(className='eight columns div-for-charts bg-grey')  # Define the right element
+                                  html.Div(className='eight columns div-for-charts bg-white'
+                                  , children =[
+                                      dbc.Col(dcc.Graph(id="Mygraph"))
+                                  ])  # Define the right element
                                   ])
                                 ])
-# Run the app
+ldf = []
+rows = 0                                
 
-# Creates a list of dictionaries, which have the keys 'label' and 'value'.
+def parse_contents(contents, filename, date):
+    #content_type, content_string = contents.split(',')
+    #decoded = base64.b64decode(content_string)
+    try:
+        if 'db' in filename:
+            db_string = filename
+            print(db_string)
+            ldf, rows = read_db(db_string)
+    except Exception as e:
+        print(e)
+        return html.Div([
+            'There was an error processing this file.'
+        ])
+
+    return html.Div([
+        dbc.Alert("Loaded: "+ filename, color="primary"),
+    ])
+
+@app.callback(Output('output-data-upload', 'children'),
+              Input('upload-data', 'contents'),
+              State('upload-data', 'filename'),
+              State('upload-data', 'last_modified'))
+def update_output(list_of_contents, list_of_names, list_of_dates):
+    if list_of_contents is not None:
+        children = [
+            parse_contents(c, n, d) for c, n, d in
+            zip(list_of_contents, list_of_names, list_of_dates)]
+        return children
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
