@@ -22,6 +22,8 @@ import pandas as pd
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import dash_table
+from dash.exceptions import PreventUpdate
+
 
 def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./daten/", thick = 1):
     fig, axs = plt.subplots(len(df)-1,2, figsize=(16, 10), facecolor='w', edgecolor='k')
@@ -73,7 +75,6 @@ def read_db(db):
     #con = sqlite3.connect(db)
     j = 0 # counter for battery numbers
     ldf = []
-
     try:
         con = sqlite3.connect(db)
     except sqlite3.Error as e:
@@ -151,14 +152,15 @@ def ret_anomalies_as_list_index(df,sdev=4):
     return dfret
 
 def create_data_lists(ldf,sdev):
+    ldft = []
     for j in range(len(ldf)):
         ldft.append(prepare_df(ldf[j]))
     #ldft[0].to_excel("create_data")
     for j in range(len(ldf)):
         test = ret_anomalies_as_list_index(ldft[j],sdev)
-        print(test)
+        #print(test)
         test = list(set(list(itertools.chain(*test)))) 
-        test.append('mean') # help columns to have same format as main dataframes with these columns
+        test.append('mean') # 
         test.append('date_time')
         ldft.append(ldft[j][test]) # filter dataframe with list
     return ldft
@@ -226,12 +228,11 @@ def create_statistics(ldft,ldf, min_max, sdev=4, customer = 'Generic'):
 def create_data_dir(directory="./data"):
     if not os.path.exists(directory):
         os.makedirs(directory)
- ########## end functions ##############  
 
 
 # Initialise the app
 app = dash.Dash(__name__)
-
+app.config.suppress_callback_exceptions = True
 
 
 # Define the app
@@ -255,21 +256,24 @@ app.layout = html.Div(children=[
                                 ]),  # Define the left element
                                   html.Div(className='eight columns div-for-charts bg-white'
                                   , children =[
-                                      dbc.Col(dcc.Graph(id="Mygraph"))
+                                     dbc.Col(dcc.Graph(id="Mygraph")),
+                                     dbc.Col(dcc.Graph(id="Mygraph2")),
+                                     dbc.Col(dcc.Graph(id="Mygraph3")),
+                                     dbc.Col(dcc.Graph(id="Mygraph4")),
                                   ])  # Define the right element
                                   ])
                                 ])
-ldf = []
-rows = 0                                
-
+                             
 def parse_contents(contents, filename, date):
-    #content_type, content_string = contents.split(',')
-    #decoded = base64.b64decode(content_string)
+    content_type, content_string = contents.split(',')
+    decoded = base64.b64decode(content_string)
     try:
         if 'db' in filename:
             db_string = filename
             print(db_string)
-            ldf, rows = read_db(db_string)
+            ldft, rows = read_db(db_string)
+            #ldft[0]["index"] = ldft[0].index
+            #print(ldft[0])
     except Exception as e:
         print(e)
         return html.Div([
@@ -280,18 +284,58 @@ def parse_contents(contents, filename, date):
         dbc.Alert("Loaded: "+ filename, color="primary"),
     ])
 
-@app.callback(Output('output-data-upload', 'children'),
+@app.callback([ 
+              Output('Mygraph', 'figure'),
+              Output('Mygraph2', 'figure'),
+              Output('Mygraph3', 'figure'),
+              Output('Mygraph4', 'figure')
+                ],
               Input('upload-data', 'contents'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'))
-def update_output(list_of_contents, list_of_names, list_of_dates):
-    if list_of_contents is not None:
-        children = [
-            parse_contents(c, n, d) for c, n, d in
-            zip(list_of_contents, list_of_names, list_of_dates)]
-        return children
+def update_output(content, name, date):
+    fig = go.Figure()
+    lfig = []
+    if content is not None:
+        db_string = ""
+        #print(type(content))
+        #content_type, content_string = str(content).split(',')
+        #decoded = base64.b64decode(content_string)
+        db_string = name[0]
+        try:
+            if 'db' in db_string:
+                ldft, rows = read_db(db_string)
+                #ldft[0]["index"] = ldft[0].index
+        except Exception as e:
+            print(e)
+
+        df = create_data_lists(ldft,5)
+        #print(df[0].head())
+        for j in range(len(df)):
+            print(len(df))
+            for k in df[j].columns[:-1]:
+                col_name = str(k)
+                fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
+                            mode='lines', # 'lines' or 'markers'
+                            name=col_name))
+            lfig.append(fig)
+            fig = go.Figure()
+            
+    if lfig:
+        return lfig[0], lfig[1], lfig[2], lfig[3]
+    return go.Figure(data=[go.Scatter(x=[1, 2, 3], y=[4, 1, 2])])
 
 
+
+# @app.callback(
+#     Output('Mygraph', 'figure'),
+#     Input('upload-data', 'filename'))
+# def update_figure(filename):
+#     #ldft, rows = read_db(str(filename))
+#     ldft[0]["index"] = ldft[0].index
+#     fig = px.line(ldft[0], x=l, y="U_V",
+#                     color="index")
+#     return fig
 if __name__ == '__main__':
     app.run_server(debug=True)
 
