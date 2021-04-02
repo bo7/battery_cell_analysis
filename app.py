@@ -233,7 +233,9 @@ def create_data_dir(directory="./data"):
 # Initialise the app
 app = dash.Dash(__name__)
 app.config.suppress_callback_exceptions = True
-
+###### globals ############
+gsdev = 5
+###########################
 
 # Define the app
 app.layout = html.Div(children=[
@@ -243,11 +245,11 @@ app.layout = html.Div(children=[
                                   ,children = [
                                     html.H2('Sileo cell analysis'),
                             
-                                     html.P(html.Div(html.H5("Select db")))
+                                     html.P()
                                     , dcc.Upload(
                                         id="upload-data",
                                         children=html.Div(
-                                           [dbc.Button("Primary", outline=True, size ="lg", color="primary", className="mr-1")]
+                                           [dbc.Button("Select DB", outline=True, size ="lg", color="primary", className="mr-1")]
                                         ),
                                         
                                         multiple=True,
@@ -260,27 +262,6 @@ app.layout = html.Div(children=[
                                   ], id = "graphs")  # Define the right element
                                   ])
                                 ])
-                             
-def parse_contents(contents, filename, date):
-    content_type, content_string = contents.split(',')
-    decoded = base64.b64decode(content_string)
-    try:
-        if 'db' in filename:
-            db_string = filename
-            print(db_string)
-            ldft, rows = read_db(db_string)
-            #ldft[0]["index"] = ldft[0].index
-            #print(ldft[0])
-    except Exception as e:
-        print(e)
-        return html.Div([
-            'There was an error processing this file.'
-        ])
-
-    return html.Div([
-        dbc.Alert("Loaded: "+ filename, color="primary"),
-    ])
-
 @app.callback(
               Output('graphs', 'children'),
                 
@@ -290,7 +271,6 @@ def parse_contents(contents, filename, date):
 def update_output(content, name, date):
     children = []
     fig = go.Figure()
-    lfig = []
     if content is not None:
         db_string = ""
         #print(type(content))
@@ -304,7 +284,7 @@ def update_output(content, name, date):
         except Exception as e:
             print(e)
 
-        df = create_data_lists(ldft,5)
+        df = create_data_lists(ldft,gsdev)
         #print(df[0].head())
         for j in range(len(df)):
             print(j)
@@ -313,7 +293,26 @@ def update_output(content, name, date):
                 fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
                             mode='lines', # 'lines' or 'markers'
                             name=col_name))
-            children.append(dcc.Graph(figure=fig))
+            if j < len(df)/2:
+                title = "Battery " + str(j)
+            else:
+                title = "Battery " + str(j % 2) + " anomalies with sd= " + str(gsdev)
+            
+            fig.update_layout(
+                title={'text' : title,
+                        'y':0.9,
+                        'x':0.4,
+                        'xanchor': 'center',
+                        'yanchor': 'top'}, 
+                xaxis_title="Measurements count",
+                yaxis_title="Voltage",
+                legend_title="UID no",
+                font=dict(
+                    family="Courier New, monospace",
+                    size=16,
+                    color="RebeccaPurple"
+                ))
+            children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
             fig = go.Figure()
             
     if len(children) == 0:
