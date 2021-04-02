@@ -256,11 +256,8 @@ app.layout = html.Div(children=[
                                 ]),  # Define the left element
                                   html.Div(className='eight columns div-for-charts bg-white'
                                   , children =[
-                                     dbc.Col(dcc.Graph(id="Mygraph")),
-                                     dbc.Col(dcc.Graph(id="Mygraph2")),
-                                     dbc.Col(dcc.Graph(id="Mygraph3")),
-                                     dbc.Col(dcc.Graph(id="Mygraph4")),
-                                  ])  # Define the right element
+                                     
+                                  ], id = "graphs")  # Define the right element
                                   ])
                                 ])
                              
@@ -284,16 +281,14 @@ def parse_contents(contents, filename, date):
         dbc.Alert("Loaded: "+ filename, color="primary"),
     ])
 
-@app.callback([ 
-              Output('Mygraph', 'figure'),
-              Output('Mygraph2', 'figure'),
-              Output('Mygraph3', 'figure'),
-              Output('Mygraph4', 'figure')
-                ],
+@app.callback(
+              Output('graphs', 'children'),
+                
               Input('upload-data', 'contents'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'))
 def update_output(content, name, date):
+    children = []
     fig = go.Figure()
     lfig = []
     if content is not None:
@@ -312,19 +307,18 @@ def update_output(content, name, date):
         df = create_data_lists(ldft,5)
         #print(df[0].head())
         for j in range(len(df)):
-            print(len(df))
+            print(j)
             for k in df[j].columns[:-1]:
                 col_name = str(k)
                 fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
                             mode='lines', # 'lines' or 'markers'
                             name=col_name))
-            lfig.append(fig)
+            children.append(dcc.Graph(figure=fig))
             fig = go.Figure()
             
-    if lfig:
-        return lfig[0], lfig[1], lfig[2], lfig[3]
-    return go.Figure(data=[go.Scatter(x=[1, 2, 3], y=[4, 1, 2])])
-
+    if len(children) == 0:
+        children.append(html.H5("select db")) 
+    return children 
 
 
 # @app.callback(
