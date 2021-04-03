@@ -229,18 +229,18 @@ def create_data_dir(directory="./data"):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def create_graphs(df, title_flag=True):
+def create_graphs(df):
     fig = go.Figure()
     children = []
-    print(len(df))
+   # print(len(df))
     for j in range(len(df)):
-        print(j)
+        #print(j)
         for k in df[j].columns[:-1]:
             col_name = str(k)
             fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
                         mode='lines', # 'lines' or 'markers'
                         name=col_name))
-        if j < len(df)/2 and title_flag: # if not flag only sd df are passed, only update on anomalie title
+        if j < len(df)/2: # if not flag only sd df are passed, only update on anomalie title
             title = "Battery " + str(j)
         else:
             title = "Battery " + str(j % 2) + " anomalies with sd= " + str(gsdev)
@@ -320,11 +320,13 @@ def update_output(content, name, date):
             print(e)
 
         df = create_data_lists(ldft,gsdev)
+        global glists 
         glists = ldft
         #print(df[0].head())
         children = create_graphs(df)
         slider1.append(html.P())
         slider1.append(dcc.Slider(
+                            id = "slider_sd",
                             min=0,
                             max=10,
                             step= 1,
@@ -337,25 +339,24 @@ def update_output(content, name, date):
         slider1.append(html.H5("No slider")) 
     return children , slider1  
 
-# @app.callback([Output('graph-1', 'figure'),
-#                Output('graph-2', 'figure')],
-#                Input('slider', 'value'))
-# def display_value(value):
-#     ldft = []
-#     test = []
-#     fig1 = go.Figure()
-#     fig2 = go.Figure()
-#     if value is not None:
-#         for j in range(len(glists)/2):
-#             test = ret_anomalies_as_list_index(glists[j],value)
-#             #print(test)
-#             test = list(set(list(itertools.chain(*test)))) 
-#             test.append('mean') # 
-#             test.append('date_time')
-#             ldft.append(glists[j][test])
-#             children = create_graphs(ldft, False)
-#         return children[0], children[1]
-#     return fig1, fig2
+@app.callback([Output('graph-2', 'figure'),
+               Output('graph-3', 'figure')],
+               Input('slider_sd', 'value'))
+def change_slider(value):
+    ldft = []
+    # fig1 = go.Figure()
+    # fig2 = go.Figure()
+    children = []
+    if value is None:
+        return dash.no_update
+    if value is not None:
+        print(len(glists))
+        ldft = create_data_lists(glists,value)
+        global gsdev
+        gsdev = value
+        children = create_graphs(ldft)
+        return children[2].figure, children[3].figure
+   # return fig1, fig2
 
 
 if __name__ == '__main__':
