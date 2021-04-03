@@ -229,12 +229,46 @@ def create_data_dir(directory="./data"):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+def create_graphs(df, title_flag=True):
+    fig = go.Figure()
+    children = []
+    print(len(df))
+    for j in range(len(df)):
+        print(j)
+        for k in df[j].columns[:-1]:
+            col_name = str(k)
+            fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
+                        mode='lines', # 'lines' or 'markers'
+                        name=col_name))
+        if j < len(df)/2 and title_flag: # if not flag only sd df are passed, only update on anomalie title
+            title = "Battery " + str(j)
+        else:
+            title = "Battery " + str(j % 2) + " anomalies with sd= " + str(gsdev)
+            
+        fig.update_layout(
+            title={'text' : title,
+                    'y':0.9,
+                    'x':0.4,
+                    'xanchor': 'center',
+                    'yanchor': 'top'}, 
+            xaxis_title="Measurements count",
+            yaxis_title="Voltage",
+            legend_title="UID no",
+            font=dict(
+                family="Courier New, monospace",
+                size=16,
+                color="RebeccaPurple"
+            ))
+        children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
+        fig = go.Figure()
+    return children
 
 # Initialise the app
 app = dash.Dash(__name__)
 app.config.suppress_callback_exceptions = True
 ###### globals ############
 gsdev = 5
+glists = []
 ###########################
 
 # Define the app
@@ -258,24 +292,25 @@ app.layout = html.Div(children=[
                                 ]),  # Define the left element
                                   html.Div(className='eight columns div-for-charts bg-white'
                                   , children =[
-                                     
-                                  ], id = "graphs")  # Define the right element
+                                     html.Div(children =[
+
+                                     ], id = "graphs"),
+                                     html.Div(children =[
+                                     ], id = "slider"),
+                                  ], id = "container")  # Define the right element
                                   ])
                                 ])
 @app.callback(
-              Output('graphs', 'children'),
-                
+              [Output('graphs', 'children'),
+              Output('slider', 'children')],
               Input('upload-data', 'contents'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'))
 def update_output(content, name, date):
     children = []
-    fig = go.Figure()
+    slider1 = []
     if content is not None:
         db_string = ""
-        #print(type(content))
-        #content_type, content_string = str(content).split(',')
-        #decoded = base64.b64decode(content_string)
         db_string = name[0]
         try:
             if 'db' in db_string:
@@ -285,50 +320,44 @@ def update_output(content, name, date):
             print(e)
 
         df = create_data_lists(ldft,gsdev)
+        glists = ldft
         #print(df[0].head())
-        for j in range(len(df)):
-            print(j)
-            for k in df[j].columns[:-1]:
-                col_name = str(k)
-                fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
-                            mode='lines', # 'lines' or 'markers'
-                            name=col_name))
-            if j < len(df)/2:
-                title = "Battery " + str(j)
-            else:
-                title = "Battery " + str(j % 2) + " anomalies with sd= " + str(gsdev)
-            
-            fig.update_layout(
-                title={'text' : title,
-                        'y':0.9,
-                        'x':0.4,
-                        'xanchor': 'center',
-                        'yanchor': 'top'}, 
-                xaxis_title="Measurements count",
-                yaxis_title="Voltage",
-                legend_title="UID no",
-                font=dict(
-                    family="Courier New, monospace",
-                    size=16,
-                    color="RebeccaPurple"
-                ))
-            children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
-            fig = go.Figure()
-            
+        children = create_graphs(df)
+        slider1.append(html.P())
+        slider1.append(dcc.Slider(
+                            min=0,
+                            max=10,
+                            step= 1,
+                            marks={i: 'SD {}'.format(i) for i in range(11)},
+                            value=gsdev
+                        ) )
+    #print(slider1)       
     if len(children) == 0:
         children.append(html.H5("select db")) 
-    return children 
+        slider1.append(html.H5("No slider")) 
+    return children , slider1  
+
+# @app.callback([Output('graph-1', 'figure'),
+#                Output('graph-2', 'figure')],
+#                Input('slider', 'value'))
+# def display_value(value):
+#     ldft = []
+#     test = []
+#     fig1 = go.Figure()
+#     fig2 = go.Figure()
+#     if value is not None:
+#         for j in range(len(glists)/2):
+#             test = ret_anomalies_as_list_index(glists[j],value)
+#             #print(test)
+#             test = list(set(list(itertools.chain(*test)))) 
+#             test.append('mean') # 
+#             test.append('date_time')
+#             ldft.append(glists[j][test])
+#             children = create_graphs(ldft, False)
+#         return children[0], children[1]
+#     return fig1, fig2
 
 
-# @app.callback(
-#     Output('Mygraph', 'figure'),
-#     Input('upload-data', 'filename'))
-# def update_figure(filename):
-#     #ldft, rows = read_db(str(filename))
-#     ldft[0]["index"] = ldft[0].index
-#     fig = px.line(ldft[0], x=l, y="U_V",
-#                     color="index")
-#     return fig
 if __name__ == '__main__':
     app.run_server(debug=True)
 
