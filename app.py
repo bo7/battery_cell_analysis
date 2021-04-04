@@ -265,7 +265,7 @@ def create_graphs(df):
 
 def create_stats_table(df_stats):
     res = []
-    res.append(html.H6("statistics"))
+    res.append(html.H6("Statistics"))
     res.append(dash_table.DataTable(
     id='table',
     columns=[{"name": i, "id": i} for i in df_stats.columns],
@@ -295,7 +295,7 @@ app.layout = html.Div(children=[
                                children=[
                                   html.Div(className='four columns div-user-controls'
                                   ,children = [
-                                    html.H2('Sileo cell analysis'),
+                                    html.H2('Sileo Cell Analysis'),
                             
                                      html.P()
                                     , dcc.Upload(
@@ -363,9 +363,9 @@ def update_output(content, name, date):
                         ) )
     #print(slider1)       
     if len(children) == 0:
-        children.append(html.H5("select db")) 
-        slider1.append(html.H5("No slider")) 
-        stats_table.append(html.H5("No stats"))
+        children.append(html.H5("")) 
+        slider1.append(html.H5("")) 
+        stats_table.append(html.H5("No Stats"))
     return children , slider1 , stats_table 
 
 @app.callback([Output('graph-2', 'figure'),
