@@ -201,17 +201,15 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     dt_diff = dt_end - dt_start  
     minutes = divmod(dt_diff.total_seconds(), 60) 
     #batt_list.append("-")
-    kind_list.append("Duration minutes:")
-    value_list.append(str(minutes[0]))
-    kind_list.append("Duration seconds:")
-    value_list.append(str(minutes[1]))
+    kind_list.append("Duration [min s]:")
+    value_list.append(str(minutes[0])+" "+str(minutes[1]))
     #batt_list.append("-")
     kind_list.append("Cells per battery")
     value_list.append(date_list[4])
     #batt_list.append("-")
     kind_list.append("# Measurements")
     value_list.append(date_list[3])
-    kind_list.append("Threshold anomalie detection with sd")
+    kind_list.append("Threshold sd")
     value_list.append(sdev)
     if len(lcols) == 0:
         kind_list.append("Anomalies")
@@ -267,19 +265,28 @@ def create_graphs(df):
 
 def create_stats_table(df_stats):
     res = []
+    res.append(html.H6("statistics"))
     res.append(dash_table.DataTable(
     id='table',
     columns=[{"name": i, "id": i} for i in df_stats.columns],
     data=df_stats.to_dict('records'),
+    fixed_rows={'headers': True},
+    style_cell={
+        'minWidth': 80, 'maxWidth': 80, 'width': 80, 'textAlign': 'left', 'backgroundColor': 'rgb(50, 50, 50)',
+        'color': 'white',
+    },
+    
+    style_as_list_view=True,
     ))
     return res
 
 # Initialise the app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, suppress_callback_exceptions = True)
 app.config.suppress_callback_exceptions = True
 ###### globals ############
 gsdev = 5
 glists = []
+gdf_stats = pd.DataFrame()
 ###########################
 
 # Define the app
@@ -299,7 +306,10 @@ app.layout = html.Div(children=[
                                         
                                         multiple=True,
                                         )
-                                        ,html.Div(id='output-data-upload')
+                                        ,html.Div(id='output-data-upload'),
+                                        html.Div(children = [
+
+                                     ], id = "statistics"),
                                 ]),  # Define the left element
                                   html.Div(className='eight columns div-for-charts bg-white'
                                   , children =[
@@ -308,9 +318,7 @@ app.layout = html.Div(children=[
                                      ], id = "graphs"),
                                      html.Div(children =[
                                      ], id = "slider"),
-                                     html.Div(children = [
-
-                                     ], id = "statistics"),
+                                     
                                   ], id = "container")  # Define the right element
                                   ])
                                 ])
@@ -337,6 +345,8 @@ def update_output(content, name, date):
 
         df = create_data_lists(ldft,gsdev)
         df_stats = create_statistics(df, rows, sdev=gsdev, customer = 'Generic')
+        global grows
+        grows = rows
         global glists 
         glists = ldft
         #print(df[0].head())
@@ -359,22 +369,25 @@ def update_output(content, name, date):
     return children , slider1 , stats_table 
 
 @app.callback([Output('graph-2', 'figure'),
-               Output('graph-3', 'figure')],
+               Output('graph-3', 'figure'),
+               Output('table', 'data'),
+               Output('table', 'columns')],
                Input('slider_sd', 'value'))
 def change_slider(value):
     ldft = []
-    # fig1 = go.Figure()
-    # fig2 = go.Figure()
     children = []
+    stats_table =[]
     if value is None:
         return dash.no_update
     if value is not None:
-        print(len(glists))
+        print(gdf_stats)
         ldft = create_data_lists(glists,value)
         global gsdev
         gsdev = value
+        df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
-        return children[2].figure, children[3].figure
+        stats_table = create_stats_table(df_stats)
+        return children[2].figure, children[3].figure,  stats_table[1].data, stats_table[1].columns
    # return fig1, fig2
 
 
