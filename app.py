@@ -165,7 +165,8 @@ def create_data_lists(ldf,sdev):
         ldft.append(ldft[j][test]) # filter dataframe with list
     return ldft
 
-def create_statistics(ldft,ldf, min_max, sdev=4, customer = 'Generic'):
+
+def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     lcols = [] # columns with UID
     batt_list = []
     kind_list = []
@@ -253,6 +254,7 @@ def create_graphs(df):
                     'yanchor': 'top'}, 
             xaxis_title="Measurements count",
             yaxis_title="Voltage",
+            showlegend=True,
             legend_title="UID no",
             font=dict(
                 family="Courier New, monospace",
@@ -262,6 +264,15 @@ def create_graphs(df):
         children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
         fig = go.Figure()
     return children
+
+def create_stats_table(df_stats):
+    res = []
+    res.append(dash_table.DataTable(
+    id='table',
+    columns=[{"name": i, "id": i} for i in df_stats.columns],
+    data=df_stats.to_dict('records'),
+    ))
+    return res
 
 # Initialise the app
 app = dash.Dash(__name__)
@@ -297,18 +308,23 @@ app.layout = html.Div(children=[
                                      ], id = "graphs"),
                                      html.Div(children =[
                                      ], id = "slider"),
+                                     html.Div(children = [
+
+                                     ], id = "statistics"),
                                   ], id = "container")  # Define the right element
                                   ])
                                 ])
 @app.callback(
               [Output('graphs', 'children'),
-              Output('slider', 'children')],
+              Output('slider', 'children'),
+              Output('statistics', 'children')],
               Input('upload-data', 'contents'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'))
 def update_output(content, name, date):
     children = []
     slider1 = []
+    stats_table = []
     if content is not None:
         db_string = ""
         db_string = name[0]
@@ -320,10 +336,12 @@ def update_output(content, name, date):
             print(e)
 
         df = create_data_lists(ldft,gsdev)
+        df_stats = create_statistics(df, rows, sdev=gsdev, customer = 'Generic')
         global glists 
         glists = ldft
         #print(df[0].head())
         children = create_graphs(df)
+        stats_table = create_stats_table(df_stats)
         slider1.append(html.P())
         slider1.append(dcc.Slider(
                             id = "slider_sd",
@@ -337,7 +355,8 @@ def update_output(content, name, date):
     if len(children) == 0:
         children.append(html.H5("select db")) 
         slider1.append(html.H5("No slider")) 
-    return children , slider1  
+        stats_table.append(html.H5("No stats"))
+    return children , slider1 , stats_table 
 
 @app.callback([Output('graph-2', 'figure'),
                Output('graph-3', 'figure')],
