@@ -1,0 +1,21 @@
+ 
+ pandas 
+ matplotlib.pyplot 
+ sqlite3
+ numpy 
+ itertools
+ datetime
+ argparse
+ os
+ sys
+ argparse
+ base64
+ io
+ dash
+ dash_core_components 
+ dash_html_components 
+ plotly.express 
+ plotly.graph_objs 
+ pandas 
+ dash_bootstrap_components 
+
