@@ -20,7 +20,7 @@ import plotly.express as px
 import plotly.graph_objs as go
 import pandas as pd
 import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_table
 from dash.exceptions import PreventUpdate
 
@@ -259,7 +259,10 @@ def create_graphs(df):
                 size=16,
                 color="RebeccaPurple"
             ))
-        children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
+        # if j < len(df)/2:
+        #     children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
+        # else:
+        children.append(dcc.Graph( id={'type': 'graph','index': j},figure=fig))
         fig = go.Figure()
     return children
 
@@ -368,26 +371,28 @@ def update_output(content, name, date):
         stats_table.append(html.H5("No Stats"))
     return children , slider1 , stats_table 
 
-@app.callback([Output('graph-2', 'figure'),
-               Output('graph-3', 'figure'),
+@app.callback([Output({'type': 'graph', 'index': ALL}, 'figure'),
                Output('table', 'data'),
                Output('table', 'columns')],
-               Input('slider_sd', 'value'))
-def change_slider(value):
+               [Input('slider_sd', 'value'),
+                State({'type': 'graph', 'index': ALL}, 'figure'),])
+def change_slider(value, values):
     ldft = []
     children = []
     stats_table =[]
+    figs = []
     if value is None:
         return dash.no_update
     if value is not None:
-        print(gdf_stats)
         ldft = create_data_lists(glists,value)
         global gsdev
         gsdev = value
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
         stats_table = create_stats_table(df_stats)
-        return children[2].figure, children[3].figure,  stats_table[1].data, stats_table[1].columns
+        for count, fig in enumerate(children):
+            figs.append(children[count].figure)
+        return figs,  stats_table[1].data, stats_table[1].columns
    # return fig1, fig2
 
 
