@@ -259,10 +259,10 @@ def create_graphs(df):
                 size=16,
                 color="RebeccaPurple"
             ))
-        # if j < len(df)/2:
-        #     children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
-        # else:
-        children.append(dcc.Graph( id={'type': 'graph','index': j},figure=fig))
+        if j < len(df)/2:
+            children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
+        else:
+            children.append(dcc.Graph( id={'type': 'graph','index': j},figure=fig))
         fig = go.Figure()
     return children
 
@@ -292,11 +292,34 @@ gsdev = 5
 glists = []
 gdf_stats = pd.DataFrame()
 
-
+navbar = dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("Cells", href="/page-1")),
+        dbc.DropdownMenu(
+            children=[
+                
+                dbc.DropdownMenuItem("Upload Databases", href="/page-2"),
+            ],
+            nav=True,
+            in_navbar=True,
+            label="More",
+        ),
+    ],
+    brand="",
+    brand_href="#",
+    color="primary",
+    dark=True,
+)
 ###########################
 
 # Define the app
-app.layout = html.Div(children=[
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
+
+
+page_1_layout = html.Div(children=[navbar,
                       html.Div(className='row',  # Define the row element
                                children=[
                                   html.Div(className='four columns div-user-controls'
@@ -392,11 +415,22 @@ def change_slider(value):
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
         stats_table = create_stats_table(df_stats)
-        for count, fig in enumerate(children): # step through all graphs doesnt matter of battery count
+        #for count, fig in enumerate(children): # step through all graphs doesnt matter of battery count
+        for count in range(int(len(children)/2),len(children)): # only graps > len/2 are sd amendments
             figs.append(children[count].figure) # add dynamic for all graphs to use ALL
         return figs,  stats_table[1].data, stats_table[1].columns
    # return fig1, fig2
 
+@app.callback(dash.dependencies.Output('page-content', 'children'),
+              [dash.dependencies.Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/page-1':
+        return page_1_layout
+    elif pathname == '/page-2':
+        return page_1_layout
+    else:
+        return page_1_layout
+    # You could also return a 404 "URL not found" page here
 
 if __name__ == '__main__':
     app.run_server(debug=True)
