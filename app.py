@@ -390,6 +390,8 @@ def change_slider(value, values):
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
         stats_table = create_stats_table(df_stats)
+        for j in range(len(children)/2:len(children)):
+            print(j)
         for count, fig in enumerate(children):
             figs.append(children[count].figure)
         return figs,  stats_table[1].data, stats_table[1].columns
