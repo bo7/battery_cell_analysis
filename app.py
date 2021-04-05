@@ -284,12 +284,15 @@ def create_stats_table(df_stats):
     return res
 
 # Initialise the app
-app = dash.Dash(__name__, suppress_callback_exceptions = True)
+app = dash.Dash(__name__, suppress_callback_exceptions = True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
 app.config.suppress_callback_exceptions = True
 ###### globals ############
 gsdev = 5
 glists = []
 gdf_stats = pd.DataFrame()
+
+
 ###########################
 
 # Define the app
@@ -374,9 +377,8 @@ def update_output(content, name, date):
 @app.callback([Output({'type': 'graph', 'index': ALL}, 'figure'),
                Output('table', 'data'),
                Output('table', 'columns')],
-               [Input('slider_sd', 'value'),
-                State({'type': 'graph', 'index': ALL}, 'figure'),])
-def change_slider(value, values):
+               Input('slider_sd', 'value'),)
+def change_slider(value):
     ldft = []
     children = []
     stats_table =[]
@@ -390,10 +392,8 @@ def change_slider(value, values):
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
         stats_table = create_stats_table(df_stats)
-        for j in range(len(children)/2:len(children)):
-            print(j)
-        for count, fig in enumerate(children):
-            figs.append(children[count].figure)
+        for count, fig in enumerate(children): # step through all graphs doesnt matter of battery count
+            figs.append(children[count].figure) # add dynamic for all graphs to use ALL
         return figs,  stats_table[1].data, stats_table[1].columns
    # return fig1, fig2
 
