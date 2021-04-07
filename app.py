@@ -23,6 +23,14 @@ import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_table
 from dash.exceptions import PreventUpdate
+from urllib.parse import quote as urlquote
+
+from flask import Flask, send_from_directory
+
+UPLOAD_DIRECTORY = os.path.dirname(os.path.realpath(__file__))+"/data/"
+print(os.path.dirname(os.path.realpath(__file__)))
+if not os.path.exists(UPLOAD_DIRECTORY):
+    os.makedirs(UPLOAD_DIRECTORY)
 
 
 def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./daten/", thick = 1):
@@ -73,6 +81,8 @@ def prepare_df(df):
 
 def read_db(db):
     #con = sqlite3.connect(db)
+    db = UPLOAD_DIRECTORY+db
+    print(db)
     j = 0 # counter for battery numbers
     ldf = []
     try:
@@ -284,7 +294,8 @@ def create_stats_table(df_stats):
     return res
 
 # Initialise the app
-app = dash.Dash(__name__, suppress_callback_exceptions = True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = Flask(__name__)
+app = dash.Dash(server=server, suppress_callback_exceptions = True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 app.config.suppress_callback_exceptions = True
 ###### globals ############
@@ -305,8 +316,8 @@ navbar = dbc.NavbarSimple(
             label="More",
         ),
     ],
-    brand="",
-    brand_href="#",
+    brand="Sileo Cell Analysis",
+    brand_href="/page-1",
     color="primary",
     dark=True,
 )
@@ -324,7 +335,7 @@ page_1_layout = html.Div(children=[navbar,
                                children=[
                                   html.Div(className='four columns div-user-controls'
                                   ,children = [
-                                    html.H2('Sileo Cell Analysis'),
+                                   # html.H2('Sileo Cell Analysis'),
                             
                                      html.P()
                                     , dcc.Upload(
@@ -351,6 +362,50 @@ page_1_layout = html.Div(children=[navbar,
                                   ], id = "container")  # Define the right element
                                   ])
                                 ])
+
+page_2_layout = html.Div(children=[navbar,
+                      html.Div(className='row',  # Define the row element
+                               children=[
+                                  html.Div(className='four columns div-user-controls'
+                                  ,children = [
+                                    html.H2('Sileo Cell Analysis'),
+                            
+                                     html.P(),
+                                     html.Div(
+    [
+        html.H3("File Browser"),
+        dcc.Upload(
+            id="upload-data",
+            children=html.Div(
+                ["Drag and drop or click to select a file"]
+            ),
+            style={
+                "width": "100%",
+                "height": "60px",
+                "lineHeight": "60px",
+                "borderWidth": "1px",
+                "borderStyle": "dashed",
+                "borderRadius": "5px",
+                "textAlign": "center",
+                "margin": "10px",
+            },
+            multiple=True,
+        ),
+    ],
+    style={"max-width": "300px"},
+)
+
+                                ],),  # Define the left element
+                                  html.Div(className='eight columns div-for-charts bg-white'
+                                  , children =[
+                                     html.Div(children =[
+                                         html.H2("File List"),
+                                         html.Ul(id="file-list"),
+                                     ], id = "XXXX"),
+                                  ], id = "container")  # Define the right element
+                                  ])
+                                ])
+
 @app.callback(
               [Output('graphs', 'children'),
               Output('slider', 'children'),
@@ -427,10 +482,52 @@ def display_page(pathname):
     if pathname == '/page-1':
         return page_1_layout
     elif pathname == '/page-2':
-        return page_1_layout
+        return page_2_layout
     else:
         return page_1_layout
     # You could also return a 404 "URL not found" page here
+
+
+def save_file(name, content):
+    """Decode and store a file uploaded with Plotly Dash."""
+    data = content.encode("utf8").split(b";base64,")[1]
+    with open(os.path.join(UPLOAD_DIRECTORY, name), "wb") as fp:
+        fp.write(base64.decodebytes(data))
+
+
+def uploaded_files():
+    """List the files in the upload directory."""
+    files = []
+    for filename in os.listdir(UPLOAD_DIRECTORY):
+        path = os.path.join(UPLOAD_DIRECTORY, filename)
+        if os.path.isfile(path):
+            files.append(filename)
+    return files
+
+
+def file_download_link(filename):
+    """Create a Plotly Dash 'A' element that downloads a file from the app."""
+    location = "/download/{}".format(urlquote(filename))
+    return html.A(filename, href=location)
+
+
+@app.callback(
+    Output("file-list", "children"),
+    [Input("upload-data", "filename"), Input("upload-data", "contents")],
+)
+def update_output(uploaded_filenames, uploaded_file_contents):
+    """Save uploaded files and regenerate the file list."""
+
+    if uploaded_filenames is not None and uploaded_file_contents is not None:
+        for name, data in zip(uploaded_filenames, uploaded_file_contents):
+            save_file(name, data)
+
+    files = uploaded_files()
+    if len(files) == 0:
+        return [html.Li("No files yet!")]
+    else:
+        return [html.Li(file_download_link(filename)) for filename in files]
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
