@@ -302,6 +302,24 @@ app.config.suppress_callback_exceptions = True
 gsdev = 5
 glists = []
 gdf_stats = pd.DataFrame()
+########################
+
+form = dbc.Jumbotron(
+    [
+        html.H6("Export for Excel and PDF statistics"),
+    dbc.Form(
+        [ 
+        dbc.FormGroup(
+            [
+                
+                dbc.Input(type="text", placeholder="Enter customer", className="mr-3"),
+                dbc.Button("Export", color="primary"),
+            ],
+            
+        ),
+        ],
+    inline=True,
+), ])
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -336,19 +354,19 @@ page_1_layout = html.Div(children=[navbar,
                                   html.Div(className='four columns div-user-controls'
                                   ,children = [
                                    # html.H2('Sileo Cell Analysis'),
-                            
-                                     html.P()
-                                    , dcc.Upload(
+                                       html.Div(children = [
+                                           ], id = "form_customer"),
+                                     
+                                    dcc.Upload(
                                         id="upload-data",
                                         children=html.Div(
-                                           [dbc.Button("Select DB", outline=True, size ="lg", color="primary", className="mr-1")]
+                                           [dbc.Button("Select DB",  id="export-button", outline=True, size ="lg", color="primary", className="mr-1")]
                                         ),
                                         
                                         multiple=True,
-                                        )
-                                        ,html.Div(id='output-data-upload'),
+                                        ),
+                                        html.Div(id='output-data-upload'),
                                         html.Div(children = [
-
                                      ], id = "statistics"),
                                 ]),  # Define the left element
                                   html.Div(className='eight columns div-for-charts bg-white'
@@ -409,14 +427,16 @@ page_2_layout = html.Div(children=[navbar,
 @app.callback(
               [Output('graphs', 'children'),
               Output('slider', 'children'),
-              Output('statistics', 'children')],
+              Output('form_customer', 'children'),
+              Output('statistics', 'children'),],
               Input('upload-data', 'contents'),
               State('upload-data', 'filename'),
-              State('upload-data', 'last_modified'))
+              State('upload-data', 'last_modified'),)
 def update_output(content, name, date):
     children = []
     slider1 = []
     stats_table = []
+    form_div = []
     if content is not None:
         db_string = ""
         db_string = name[0]
@@ -445,12 +465,15 @@ def update_output(content, name, date):
                             marks={i: 'SD {}'.format(i) for i in range(11)},
                             value=gsdev
                         ) )
+        form_div.append(html.Br())
+        form_div.append(form)
     #print(slider1)       
     if len(children) == 0:
         children.append(html.H5("")) 
         slider1.append(html.H5("")) 
         stats_table.append(html.H5("No Stats"))
-    return children , slider1 , stats_table 
+        form_div.append("")
+    return children , slider1 , stats_table, form_div
 
 @app.callback([Output({'type': 'graph', 'index': ALL}, 'figure'),
                Output('table', 'data'),
@@ -515,7 +538,7 @@ def file_download_link(filename):
     Output("file-list", "children"),
     [Input("upload-data", "filename"), Input("upload-data", "contents")],
 )
-def update_output(uploaded_filenames, uploaded_file_contents):
+def update_output_list(uploaded_filenames, uploaded_file_contents):
     """Save uploaded files and regenerate the file list."""
 
     if uploaded_filenames is not None and uploaded_file_contents is not None:
@@ -527,7 +550,6 @@ def update_output(uploaded_filenames, uploaded_file_contents):
         return [html.Li("No files yet!")]
     else:
         return [html.Li(file_download_link(filename)) for filename in files]
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)
