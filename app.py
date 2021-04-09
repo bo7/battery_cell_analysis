@@ -183,13 +183,13 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     value_list = [] 
     x = {}
     df_half = int(len(ldft)/2) # second half is outlier
-    for i in range(df_half, len(ldft)):
-        lcols.extend(ldft[i].columns)
+    #for i in range(df_half, len(ldft)):
+    #    lcols.extend(ldft[i].columns)
     x = { "Battery " + str(i%2): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
     print(x)
-    lcols = list(set(lcols))
-    lcols.remove("mean")
-    lcols.remove("date_time")
+    # lcols = list(set(lcols))
+    # lcols.remove("mean")
+    # lcols.remove("date_time")
 
     
     date_list = [item for t in min_max for item in t]
@@ -222,17 +222,14 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     value_list.append(date_list[3])
     kind_list.append("Threshold sd")
     value_list.append(sdev)
-    if len(lcols) == 0:
+    if len(x) == 0:
         kind_list.append("Anomalies")
         value_list.append(0)
     else:
-      #  for i in sorted(lcols):
-      #      kind_list.append("Detected UID")
-      #      value_list.append(i)
       kind_list.append("Detected UIDs")
       value_list.append(" ")
       for key in x:
-          for i in x[key][:-2]:
+          for i in x[key][:-2]: # skip mean and date
             kind_list.append(key)
             value_list.append(i)
 
@@ -309,6 +306,7 @@ def create_stats_table(df_stats):
     
     style_as_list_view=True,
     ))
+    #print(res)
     return res
 
 # Initialise the app
@@ -369,31 +367,35 @@ app.layout = html.Div([
 page_1_layout = html.Div(children=[navbar,
                       html.Div(className='row',  # Define the row element
                                children=[
-                                  html.Div(className='three columns div-user-controls'
+                                  html.Div(className='two columns div-user-controls'
                                   ,children = [
                                    # html.H2('Sileo Cell Analysis'),
-                                       html.Div(children = [
-                                           ], id = "form_customer"),
+                                      
                                      
                                     dcc.Upload(
                                         id="upload-data",
                                         children=html.Div(
-                                           [dbc.Button("Select DB",  id="export-button", outline=True, size ="lg", color="primary", className="mr-1")]
+                                           [dbc.Button("Select DB",  id="upload-button", outline=True, size ="lg", color="primary", className="mr-1")]
                                         ),
                                         
                                         multiple=True,
                                         ),
                                         html.Div(id='output-data-upload'),
-                                        html.Div(children = [
-                                     ], id = "statistics"),
+                                       # html.Div(children = [
+                                    # ], id = "statistics"),
                                 ]),  # Define the left element
-                                  html.Div(className='nine columns div-for-charts bg-white'
+                                  html.Div(className='ten columns div-for-charts bg-white'
                                   , children =[
                                      html.Div(children =[
 
                                      ], id = "graphs"),
                                      html.Div(children =[
                                      ], id = "slider"),
+                                     html.Div(children = [
+                                           ], id = "form_customer"),
+                                      html.Div(children = [
+                                     ], id = "statistics"),
+                                      
                                      
                                   ], id = "container")  # Define the right element
                                   ])
@@ -445,8 +447,8 @@ page_2_layout = html.Div(children=[navbar,
 @app.callback(
               [Output('graphs', 'children'),
               Output('slider', 'children'),
-              Output('form_customer', 'children'),
-              Output('statistics', 'children'),],
+              Output('statistics', 'children'),
+            Output('form_customer', 'children'),],
               Input('upload-data', 'contents'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'),)
@@ -511,6 +513,7 @@ def change_slider(value):
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
         stats_table = create_stats_table(df_stats)
+        print(df_stats)
         #for count, fig in enumerate(children): # step through all graphs doesnt matter of battery count
         for count in range(int(len(children)/2),len(children)): # only graps > len/2 are sd amendments
             figs.append(children[count].figure) # add dynamic for all graphs to use ALL
