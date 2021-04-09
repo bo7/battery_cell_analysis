@@ -181,11 +181,12 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     batt_list = []
     kind_list = []
     value_list = [] 
-
+    x = {}
     df_half = int(len(ldft)/2) # second half is outlier
     for i in range(df_half, len(ldft)):
         lcols.extend(ldft[i].columns)
-
+    x = { "Battery " + str(i%2): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
+    print(x)
     lcols = list(set(lcols))
     lcols.remove("mean")
     lcols.remove("date_time")
@@ -211,8 +212,8 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     dt_diff = dt_end - dt_start  
     minutes = divmod(dt_diff.total_seconds(), 60) 
     #batt_list.append("-")
-    kind_list.append("Duration [min s]:")
-    value_list.append(str(minutes[0])+" "+str(minutes[1]))
+    kind_list.append("Duration [min:s]:")
+    value_list.append(str(int(minutes[0]))+":"+str(int(minutes[1])))
     #batt_list.append("-")
     kind_list.append("Cells per battery")
     value_list.append(date_list[4])
@@ -225,8 +226,14 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
         kind_list.append("Anomalies")
         value_list.append(0)
     else:
-        for i in sorted(lcols):
-            kind_list.append("Detected UID")
+      #  for i in sorted(lcols):
+      #      kind_list.append("Detected UID")
+      #      value_list.append(i)
+      kind_list.append("Detected UIDs")
+      value_list.append(" ")
+      for key in x:
+          for i in x[key][:-2]:
+            kind_list.append(key)
             value_list.append(i)
 
     df_statistics = pd.DataFrame(list(zip(kind_list, value_list)), 
@@ -248,7 +255,8 @@ def create_graphs(df):
             col_name = str(k)
             fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
                         mode='lines', # 'lines' or 'markers'
-                        name=col_name))
+                        name=col_name,
+                        line_width=.5 ))
         if j < len(df)/2: # if not flag only sd df are passed, only update on anomalie title
             title = "Battery " + str(j)
         else:
@@ -269,7 +277,17 @@ def create_graphs(df):
                 size=16,
                 color="RebeccaPurple"
             ))
+        fig.update_yaxes(showgrid=True, zeroline=False, showticklabels=True,
+                 showspikes=True, spikemode='across', spikesnap='cursor', showline=True, spikedash='solid'
+                 ,spikethickness=0.5)
+
+        fig.update_xaxes(showgrid=True, zeroline=False, rangeslider_visible=False, showticklabels=True,
+                 showspikes=True, spikemode='across', spikesnap='cursor', showline=True, spikedash='solid',spikethickness=0.5)
+
+        fig.update_layout(hoverdistance=0)
+        fig.update_traces(xaxis='x', hoverinfo='none')
         if j < len(df)/2:
+            fig.update_layout(showlegend=False)
             children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
         else:
             children.append(dcc.Graph( id={'type': 'graph','index': j},figure=fig))
@@ -313,7 +331,7 @@ form = dbc.Jumbotron(
             [
                 
                 dbc.Input(type="text", placeholder="Enter customer", className="mr-3"),
-                dbc.Button("Export", color="primary"),
+                dbc.Button("Export", color="primary", className="mr-3"),
             ],
             
         ),
@@ -351,7 +369,7 @@ app.layout = html.Div([
 page_1_layout = html.Div(children=[navbar,
                       html.Div(className='row',  # Define the row element
                                children=[
-                                  html.Div(className='four columns div-user-controls'
+                                  html.Div(className='three columns div-user-controls'
                                   ,children = [
                                    # html.H2('Sileo Cell Analysis'),
                                        html.Div(children = [
@@ -369,7 +387,7 @@ page_1_layout = html.Div(children=[navbar,
                                         html.Div(children = [
                                      ], id = "statistics"),
                                 ]),  # Define the left element
-                                  html.Div(className='eight columns div-for-charts bg-white'
+                                  html.Div(className='nine columns div-for-charts bg-white'
                                   , children =[
                                      html.Div(children =[
 
