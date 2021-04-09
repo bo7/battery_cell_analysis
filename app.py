@@ -177,7 +177,7 @@ def create_data_lists(ldf,sdev):
 
 
 def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
-    lcols = [] # columns with UID
+    #lcols = [] # columns with UID
     batt_list = []
     kind_list = []
     value_list = [] 
@@ -186,7 +186,7 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     #for i in range(df_half, len(ldft)):
     #    lcols.extend(ldft[i].columns)
     x = { "Battery " + str(i%2): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
-    print(x)
+    #print(x)
     # lcols = list(set(lcols))
     # lcols.remove("mean")
     # lcols.remove("date_time")
