@@ -340,7 +340,7 @@ navbar = dbc.NavbarSimple(
         dbc.DropdownMenu(
             children=[
                 
-                dbc.DropdownMenuItem("Upload DB/Download Export", href="/page-2"),
+                dbc.DropdownMenuItem("Upload DB/Download Export ", href="/page-2"),
             ],
             nav=True,
             in_navbar=True,
