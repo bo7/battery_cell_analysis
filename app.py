@@ -35,40 +35,6 @@ if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
 
-def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./daten/", thick = 1):
-    fig, axs = plt.subplots(len(df)-1,2, figsize=(16, 10), facecolor='w', edgecolor='k')
-    fig.subplots_adjust(hspace = .4, wspace=.1)
-    axs = axs.ravel()
-    # n = -1 # skip last row with count for x-axis
-    # half = (len(df))/2 # determines what is battery data first half, outlier second half preparing subplot title
-    # for i in range(len(df)):
-    #     for k in df[i].columns[:n]: # n shows if last column must be skipped or not, due to preparedf dataframes or anomalie
-    #         axs[i].plot(df[i][k].index,df[i][str(k)], label = str(k), linewidth= thick )
-    #     if i < half:
-    #         axs[i].set_title("battery " +str(i))
-    #         if excel:
-    #             df[i].to_excel(dir +customer+"_battery_" +str(i)+ ".xlsx")
-    #     else:
-    #         axs[i].set_title("battery " +str(i % 2) + " " + "anomalie with sd = " +str(sdev))
-    #         if excel:
-    #             df[i].to_excel(dir + customer+"_battery_" +str(i % 2)+ "_anomalie_with_sd_" +str(sdev)+ ".xlsx")
-    #     if len(df[i].columns) < 30:
-    #         axs[i].legend(loc="upper right", title="Cell(s) to examine ", bbox_to_anchor=(1, 1), fontsize = 5)
-    # cell_text = []
-    # for row in range(len(df_statistics)):
-    #     cell_text.append(df_statistics.iloc[row])
-    # column_labels = df_statistics.columns
-    # axs[i+1].axis('tight')
-    # axs[i+1].axis('off')
-    # axs[i+1].table(cellText=cell_text,colLabels=column_labels,loc="center",cellLoc ='left', colLoc='left')
-    # if i % 2 == 1:
-    #     fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
-    # plt.suptitle(customer,fontsize=20)
-    #plt.savefig(fn+".pdf")
-    # if show:
-    #     plt.show()
-    # if excel:
-    #     df_statistics.to_excel(dir + customer + "_stats.xlsx", index=False)
 
 
 def prepare_df(df):
