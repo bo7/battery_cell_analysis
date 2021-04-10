@@ -590,9 +590,10 @@ def update_export_div(n_clicks, input_value):
     if not n_clicks:
         raise PreventUpdate
     if input_value is not None:
-        customer = input_value
-        pdf = '"Zelldiagramm ' + customer + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
+        customer = '"'+ input_value + '"'
+        pdf = '"Zelldiagramm ' + input_value + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
         try:
+            print(gdbname)
             print(('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf))
             os.system('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf)
         except Exception as e:
