@@ -311,6 +311,7 @@ if args.thick:
 else:
     thickness = 1
 create_data_dir(directory=output_dir)
+create_data_dir(directory='./data/')
 ldft = []
 ldf, rows = read_db(path)
 ldft = create_data_lists(ldf,sdev)

@@ -338,7 +338,9 @@ form = dbc.Jumbotron(
         ),
         ],
     inline=True,
-), ])
+    
+    ),html.Div(children = [], id = "export_div"), 
+     ])
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -398,8 +400,7 @@ page_1_layout = html.Div(children=[navbar,
                                            ], id = "form_customer"),
                                       html.Div(children = [
                                      ], id = "statistics"),
-                                     html.Div(children = [
-                                     ], id = "export_div"), 
+                                     
                                      
                                   ], id = "container")  # Define the right element
                                   ])
@@ -466,6 +467,8 @@ def update_output(content, name, date):
         db_string = name[0]
         try:
             if 'db' in db_string:
+                global gdbname
+                gdbname = db_string
                 ldft, rows = read_db(db_string)
                 #ldft[0]["index"] = ldft[0].index
         except Exception as e:
@@ -588,12 +591,13 @@ def update_export_div(n_clicks, input_value):
         raise PreventUpdate
     if input_value is not None:
         customer = input_value
-        customer = customer #+ " "+ str(gdf_stats.iloc[1]["Value"])
+        pdf = '"Zelldiagramm ' + customer + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
         try:
-            os.system('python3 cell_detection_0.91.py data/scl_mon_log_2021_03_03__18_10_43.db -e -c ' + customer)
+            print(('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf))
+            os.system('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf)
         except Exception as e:
             print(e)
-        return html.H4(customer)
+        return html.H6(customer)
     return html.H3(" ")
 
 if __name__ == '__main__':
