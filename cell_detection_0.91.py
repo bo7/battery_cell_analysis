@@ -150,19 +150,80 @@ def create_data_lists(ldf,sdev):
         ldft.append(ldft[j][test]) # filter dataframe with list
     return ldft
 
-def create_statistics(ldft,ldf, min_max, sdev=4, customer = 'Generic'):
-    lcols = [] # columns with UID
+# def create_statistics(ldft,ldf, min_max, sdev=4, customer = 'Generic'):
+#     lcols = [] # columns with UID
+#     batt_list = []
+#     kind_list = []
+#     value_list = [] 
+
+#     df_half = int(len(ldft)/2) # second half is outlier
+#     for i in range(df_half, len(ldft)): #get outlier uids from columnnames
+#         lcols.extend(ldft[i].columns)
+
+#     lcols = list(set(lcols))
+#     lcols.remove("mean")
+#     lcols.remove("date_time")
+
+    
+#     date_list = [item for t in min_max for item in t]
+    
+#     kind_list.append("Customer")
+#     value_list.append(customer)
+#     kind_list.append("Creation date")
+#     value_list.append(date_list[1][:10])
+#     batt_list.append("-")
+#     kind_list.append("Finish date")
+#     value_list.append(date_list[2][:10])
+#     batt_list.append("-")
+#     kind_list.append("Start time")
+#     value_list.append(date_list[1][11:])
+#    # batt_list.append("-")
+#     kind_list.append("Stop time")
+#     value_list.append(date_list[2][11:])
+#     dt_start = datetime. strptime(date_list[1], '%d.%m.%Y %H:%M:%S')
+#     dt_end = datetime. strptime(date_list[2], '%d.%m.%Y %H:%M:%S')
+#     dt_diff = dt_end - dt_start  
+#     minutes = divmod(dt_diff.total_seconds(), 60) 
+#     #batt_list.append("-")
+#     kind_list.append("Duration minutes:")
+#     value_list.append(str(minutes[0]))
+#     kind_list.append("Duration seconds:")
+#     value_list.append(str(minutes[1]))
+#     #batt_list.append("-")
+#     kind_list.append("Cells per battery")
+#     value_list.append(date_list[4])
+#     #batt_list.append("-")
+#     kind_list.append("# Measurements")
+#     value_list.append(date_list[3])
+#     kind_list.append("Threshold anomalie detection with sd")
+#     value_list.append(sdev)
+#     if len(lcols) == 0:
+#         kind_list.append("Anomalies")
+#         value_list.append(0)
+#     else:
+#         for i in sorted(lcols):
+#             kind_list.append("Detected UID")
+#             value_list.append(i)
+
+#     df_statistics = pd.DataFrame(list(zip(kind_list, value_list)), 
+#                columns =[ 'Name', "Value"]) 
+    
+#     return df_statistics
+def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
+    
+    #lcols = [] # columns with UID
     batt_list = []
     kind_list = []
     value_list = [] 
-
+    x = {}
     df_half = int(len(ldft)/2) # second half is outlier
-    for i in range(df_half, len(ldft)): #get outlier uids from columnnames
-        lcols.extend(ldft[i].columns)
-
-    lcols = list(set(lcols))
-    lcols.remove("mean")
-    lcols.remove("date_time")
+    #for i in range(df_half, len(ldft)):
+    #    lcols.extend(ldft[i].columns)
+    x = { "Battery " + str(i%2): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
+    #print(x)
+    # lcols = list(set(lcols))
+    # lcols.remove("mean")
+    # lcols.remove("date_time")
 
     
     date_list = [item for t in min_max for item in t]
@@ -185,24 +246,25 @@ def create_statistics(ldft,ldf, min_max, sdev=4, customer = 'Generic'):
     dt_diff = dt_end - dt_start  
     minutes = divmod(dt_diff.total_seconds(), 60) 
     #batt_list.append("-")
-    kind_list.append("Duration minutes:")
-    value_list.append(str(minutes[0]))
-    kind_list.append("Duration seconds:")
-    value_list.append(str(minutes[1]))
+    kind_list.append("Duration [min:s]:")
+    value_list.append(str(int(minutes[0]))+":"+str(int(minutes[1])))
     #batt_list.append("-")
     kind_list.append("Cells per battery")
     value_list.append(date_list[4])
     #batt_list.append("-")
     kind_list.append("# Measurements")
     value_list.append(date_list[3])
-    kind_list.append("Threshold anomalie detection with sd")
+    kind_list.append("Threshold sd")
     value_list.append(sdev)
-    if len(lcols) == 0:
+    if len(x) == 0:
         kind_list.append("Anomalies")
         value_list.append(0)
     else:
-        for i in sorted(lcols):
-            kind_list.append("Detected UID")
+      kind_list.append("Detected UIDs")
+      value_list.append(" ")
+      for key in x:
+          for i in x[key][:-2]: # skip mean and date
+            kind_list.append(key)
             value_list.append(i)
 
     df_statistics = pd.DataFrame(list(zip(kind_list, value_list)), 
@@ -252,9 +314,8 @@ create_data_dir(directory=output_dir)
 ldft = []
 ldf, rows = read_db(path)
 ldft = create_data_lists(ldf,sdev)
-print(ldft)
 #show_output = True
-df_statistics = create_statistics(ldft,ldf,rows, sdev, customer)
+df_statistics = create_statistics(ldft,rows, sdev, customer)
 customer = customer + " "+ str(df_statistics.iloc[1]["Value"]) 
 if pdf_name == "Zelldiagrammn":
     pdf_name = pdf_name +" " + customer 
