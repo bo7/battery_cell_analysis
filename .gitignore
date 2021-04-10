@@ -2,3 +2,5 @@ data/
 scl_mon*
 *.pdf
 *.xlsx
+.DS_Store
+tmp/
