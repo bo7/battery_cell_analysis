@@ -10,7 +10,7 @@ import os
 import sys
 import argparse
 
-def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./daten/", thick = 1):
+def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./data/", thick = 1):
     fig, axs = plt.subplots(len(df)-1,2, figsize=(16, 10), facecolor='w', edgecolor='k')
     fig.subplots_adjust(hspace = .4, wspace=.1)
     axs = axs.ravel()
@@ -39,7 +39,7 @@ def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, 
     if i % 2 == 1:
         fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
     plt.suptitle(customer,fontsize=20)
-    plt.savefig(fn+".pdf")
+    plt.savefig(dir + fn+ ".pdf")
     if show:
         plt.show()
     if excel:
@@ -305,7 +305,7 @@ else:
 if args.dir:
     output_dir = args.dir
 else:
-    output_dir = "./daten"
+    output_dir = "./tmp/"
 if args.thick:
     thickness = args.thick
 else:
