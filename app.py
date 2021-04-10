@@ -299,13 +299,19 @@ form = dbc.Jumbotron(
                 
                 dbc.Input(id="in_customer", type="text", placeholder="Enter customer", className="mr-3"),
                 dbc.Button("Export", id ="export_button", color="primary", className="mr-3"),
+                
             ],
             
         ),
+        
         ],
     inline=True,
     
-    ),html.Div(children = [], id = "export_div"), 
+    ),html.Div(children=[dcc.Loading(
+                    id="loading-1",
+                    type="default",
+                    children=html.Div(id="loading-output-1")
+                ),], id='spinner'), 
      ])
 
 navbar = dbc.NavbarSimple(
@@ -548,8 +554,8 @@ def update_output_list(uploaded_filenames, uploaded_file_contents):
 #create_graph(df=ldft,fn=pdf_name, customer=customer, show=show_output, sdev = sdev, df_statistics = df_statistics, excel=excel_output, dir=output_dir, thick = thickness)
 
 @app.callback(
-    Output('export_div', 'children'),
-    [Input('export_button', 'n_clicks')],
+    Output('loading-output-1', 'children'),
+    [Input('export_button', 'n_clicks'),],
     State("in_customer", 'value')
 )
 def update_export_div(n_clicks, input_value):
@@ -560,8 +566,10 @@ def update_export_div(n_clicks, input_value):
         pdf = '"Zelldiagramm ' + input_value + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
         try:
             print(gdbname)
-            print(('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf))
-            os.system('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf)
+            db_name = '"' + gdbname + '"'
+            print(('python3 cell_detection_0.91.py data/'  + db_name + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf))
+            res =os.system('python3 cell_detection_0.91.py data/'  + db_name + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf)
+            print(res)
         except Exception as e:
             print(e)
         return html.H6(customer + ' exported')
