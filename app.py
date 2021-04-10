@@ -25,8 +25,11 @@ from subprocess import call
 import dash_table
 from dash.exceptions import PreventUpdate
 from urllib.parse import quote as urlquote
-
+from zipfile import ZipFile
 from flask import Flask, send_from_directory
+from os.path import basename
+import glob
+import shutil
 
 UPLOAD_DIRECTORY = os.path.dirname(os.path.realpath(__file__))+"/data/"
 WORKING_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
@@ -276,12 +279,29 @@ def create_stats_table(df_stats):
     ))
     #print(res)
     return res
+def zipFilesInDir(dirName, zipFileName, filter):
+   # create a ZipFile object
+   with ZipFile(zipFileName, 'w') as zipObj:
+       # Iterate over all the files in directory
+       for folderName, subfolders, filenames in os.walk(dirName):
+           for filename in filenames:
+               if filter(filename):
+                   # create complete filepath of file in directory
+                   filePath = os.path.join(folderName, filename)
+                   # Add file to zip
+                   zipObj.write(filePath, basename(filePath))
 
 # Initialise the app
 server = Flask(__name__)
 app = dash.Dash(server=server, suppress_callback_exceptions = True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 app.config.suppress_callback_exceptions = True
+
+@server.route("/data/<path:path>")
+def download(path):
+    """Serve a file from the upload directory."""
+    return send_from_directory(UPLOAD_DIRECTORY, path, as_attachment=True)
+
 ###### globals ############
 gsdev = 5
 glists = []
@@ -320,7 +340,7 @@ navbar = dbc.NavbarSimple(
         dbc.DropdownMenu(
             children=[
                 
-                dbc.DropdownMenuItem("Upload Databases", href="/page-2"),
+                dbc.DropdownMenuItem("Upload DB/Download Export", href="/page-2"),
             ],
             nav=True,
             in_navbar=True,
@@ -531,7 +551,7 @@ def uploaded_files():
 
 def file_download_link(filename):
     """Create a Plotly Dash 'A' element that downloads a file from the app."""
-    location = "/download/{}".format(urlquote(filename))
+    location = "./data/{}".format(urlquote(filename))
     return html.A(filename, href=location)
 
 
@@ -562,7 +582,8 @@ def update_export_div(n_clicks, input_value):
     if not n_clicks:
         raise PreventUpdate
     if input_value is not None:
-        customer = '"'+ input_value + '"'
+        #customer = '"'+ input_value + '"'
+        customer = r'%s' % input_value
         pdf = '"Zelldiagramm ' + input_value + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
         try:
             print(gdbname)
@@ -572,6 +593,13 @@ def update_export_div(n_clicks, input_value):
             print(res)
         except Exception as e:
             print(e)
+        zipFilesInDir('./tmp', customer +'.zip', lambda name : 'xlsx' or 'pdf' in name)
+        files = glob.glob('./tmp/*')
+        for f in files: 
+            os.remove(f)
+        shutil.move('./' +customer +'.zip', './data/')
+        if os.path.exists("./data/.DS_Store"):
+            os.remove("./data/.DS_Store")
         return html.H6(customer + ' exported')
     return html.H3(" ")
 
