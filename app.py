@@ -21,6 +21,7 @@ import plotly.graph_objs as go
 import pandas as pd
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State, MATCH, ALL
+from subprocess import call
 import dash_table
 from dash.exceptions import PreventUpdate
 from urllib.parse import quote as urlquote
@@ -28,6 +29,7 @@ from urllib.parse import quote as urlquote
 from flask import Flask, send_from_directory
 
 UPLOAD_DIRECTORY = os.path.dirname(os.path.realpath(__file__))+"/data/"
+WORKING_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 print(os.path.dirname(os.path.realpath(__file__)))
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
@@ -37,36 +39,36 @@ def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, 
     fig, axs = plt.subplots(len(df)-1,2, figsize=(16, 10), facecolor='w', edgecolor='k')
     fig.subplots_adjust(hspace = .4, wspace=.1)
     axs = axs.ravel()
-    n = -1 # skip last row with count for x-axis
-    half = (len(df))/2 # determines what is battery data first half, outlier second half preparing subplot title
-    for i in range(len(df)):
-        for k in df[i].columns[:n]: # n shows if last column must be skipped or not, due to preparedf dataframes or anomalie
-            axs[i].plot(df[i][k].index,df[i][str(k)], label = str(k), linewidth= thick )
-        if i < half:
-            axs[i].set_title("battery " +str(i))
-            if excel:
-                df[i].to_excel(dir +customer+"_battery_" +str(i)+ ".xlsx")
-        else:
-            axs[i].set_title("battery " +str(i % 2) + " " + "anomalie with sd = " +str(sdev))
-            if excel:
-                df[i].to_excel(dir + customer+"_battery_" +str(i % 2)+ "_anomalie_with_sd_" +str(sdev)+ ".xlsx")
-        if len(df[i].columns) < 30:
-            axs[i].legend(loc="upper right", title="Cell(s) to examine ", bbox_to_anchor=(1, 1), fontsize = 5)
-    cell_text = []
-    for row in range(len(df_statistics)):
-        cell_text.append(df_statistics.iloc[row])
-    column_labels = df_statistics.columns
-    axs[i+1].axis('tight')
-    axs[i+1].axis('off')
-    axs[i+1].table(cellText=cell_text,colLabels=column_labels,loc="center",cellLoc ='left', colLoc='left')
-    if i % 2 == 1:
-        fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
-    plt.suptitle(customer,fontsize=20)
-    plt.savefig(fn+".pdf")
-    if show:
-        plt.show()
-    if excel:
-        df_statistics.to_excel(dir + customer + "_stats.xlsx", index=False)
+    # n = -1 # skip last row with count for x-axis
+    # half = (len(df))/2 # determines what is battery data first half, outlier second half preparing subplot title
+    # for i in range(len(df)):
+    #     for k in df[i].columns[:n]: # n shows if last column must be skipped or not, due to preparedf dataframes or anomalie
+    #         axs[i].plot(df[i][k].index,df[i][str(k)], label = str(k), linewidth= thick )
+    #     if i < half:
+    #         axs[i].set_title("battery " +str(i))
+    #         if excel:
+    #             df[i].to_excel(dir +customer+"_battery_" +str(i)+ ".xlsx")
+    #     else:
+    #         axs[i].set_title("battery " +str(i % 2) + " " + "anomalie with sd = " +str(sdev))
+    #         if excel:
+    #             df[i].to_excel(dir + customer+"_battery_" +str(i % 2)+ "_anomalie_with_sd_" +str(sdev)+ ".xlsx")
+    #     if len(df[i].columns) < 30:
+    #         axs[i].legend(loc="upper right", title="Cell(s) to examine ", bbox_to_anchor=(1, 1), fontsize = 5)
+    # cell_text = []
+    # for row in range(len(df_statistics)):
+    #     cell_text.append(df_statistics.iloc[row])
+    # column_labels = df_statistics.columns
+    # axs[i+1].axis('tight')
+    # axs[i+1].axis('off')
+    # axs[i+1].table(cellText=cell_text,colLabels=column_labels,loc="center",cellLoc ='left', colLoc='left')
+    # if i % 2 == 1:
+    #     fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
+    # plt.suptitle(customer,fontsize=20)
+    #plt.savefig(fn+".pdf")
+    # if show:
+    #     plt.show()
+    # if excel:
+    #     df_statistics.to_excel(dir + customer + "_stats.xlsx", index=False)
 
 
 def prepare_df(df):
@@ -318,6 +320,7 @@ app.config.suppress_callback_exceptions = True
 gsdev = 5
 glists = []
 gdf_stats = pd.DataFrame()
+gdbname = ""
 ########################
 
 form = dbc.Jumbotron(
@@ -328,14 +331,16 @@ form = dbc.Jumbotron(
         dbc.FormGroup(
             [
                 
-                dbc.Input(type="text", placeholder="Enter customer", className="mr-3"),
-                dbc.Button("Export", color="primary", className="mr-3"),
+                dbc.Input(id="in_customer", type="text", placeholder="Enter customer", className="mr-3"),
+                dbc.Button("Export", id ="export_button", color="primary", className="mr-3"),
             ],
             
         ),
         ],
     inline=True,
-), ])
+    
+    ),html.Div(children = [], id = "export_div"), 
+     ])
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -395,7 +400,7 @@ page_1_layout = html.Div(children=[navbar,
                                            ], id = "form_customer"),
                                       html.Div(children = [
                                      ], id = "statistics"),
-                                      
+                                     
                                      
                                   ], id = "container")  # Define the right element
                                   ])
@@ -462,6 +467,8 @@ def update_output(content, name, date):
         db_string = name[0]
         try:
             if 'db' in db_string:
+                global gdbname
+                gdbname = db_string
                 ldft, rows = read_db(db_string)
                 #ldft[0]["index"] = ldft[0].index
         except Exception as e:
@@ -469,6 +476,7 @@ def update_output(content, name, date):
 
         df = create_data_lists(ldft,gsdev)
         df_stats = create_statistics(df, rows, sdev=gsdev, customer = 'Generic')
+        #print(df)
         global grows
         grows = rows
         global glists 
@@ -513,7 +521,7 @@ def change_slider(value):
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
         children = create_graphs(ldft)
         stats_table = create_stats_table(df_stats)
-        print(df_stats)
+        #print(df_stats)
         #for count, fig in enumerate(children): # step through all graphs doesnt matter of battery count
         for count in range(int(len(children)/2),len(children)): # only graps > len/2 are sd amendments
             figs.append(children[count].figure) # add dynamic for all graphs to use ALL
@@ -571,6 +579,26 @@ def update_output_list(uploaded_filenames, uploaded_file_contents):
         return [html.Li("No files yet!")]
     else:
         return [html.Li(file_download_link(filename)) for filename in files]
+#create_graph(df=ldft,fn=pdf_name, customer=customer, show=show_output, sdev = sdev, df_statistics = df_statistics, excel=excel_output, dir=output_dir, thick = thickness)
+
+@app.callback(
+    Output('export_div', 'children'),
+    [Input('export_button', 'n_clicks')],
+    State("in_customer", 'value')
+)
+def update_export_div(n_clicks, input_value):
+    if not n_clicks:
+        raise PreventUpdate
+    if input_value is not None:
+        customer = input_value
+        pdf = '"Zelldiagramm ' + customer + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
+        try:
+            print(('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf))
+            os.system('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf)
+        except Exception as e:
+            print(e)
+        return html.H6(customer)
+    return html.H3(" ")
 
 if __name__ == '__main__':
     app.run_server(debug=True)
