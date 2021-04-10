@@ -597,7 +597,7 @@ def update_export_div(n_clicks, input_value):
             os.system('python3 cell_detection_0.91.py data/'  + gdbname + ' -e -c ' + customer +' -s ' + str(gsdev) + ' -p ' +pdf)
         except Exception as e:
             print(e)
-        return html.H6(customer)
+        return html.H6(customer + ' exported')
     return html.H3(" ")
 
 if __name__ == '__main__':
