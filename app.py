@@ -382,6 +382,11 @@ page_1_layout = html.Div(children=[navbar,
                                 ]),  # Define the left element
                                   html.Div(className='ten columns div-for-charts bg-white'
                                   , children =[
+                                      html.Div(children=[dcc.Loading(
+                                            id="loading-2",
+                                            type="default",
+                                            children=html.Div(id="loading-output-2")
+                                        ),], id='spinner'), 
                                      html.Div(children =[
 
                                      ], id = "graphs"),
@@ -444,7 +449,8 @@ page_2_layout = html.Div(children=[navbar,
               [Output('graphs', 'children'),
               Output('slider', 'children'),
               Output('statistics', 'children'),
-              Output('form_customer', 'children'),],
+              Output('form_customer', 'children'),
+              Output('loading-output-2', 'children')],
               Input('upload-data', 'filename'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'),)
@@ -492,7 +498,7 @@ def update_output(nam1 ,name, date):
         slider1.append(html.H5("")) 
         stats_table.append(html.H5("No Stats"))
         form_div.append("")
-    return children , slider1 , stats_table, form_div
+    return children , slider1 , stats_table, form_div, html.H6('')
 
 @app.callback([Output({'type': 'graph', 'index': ALL}, 'figure'),
                Output('table', 'data'),
