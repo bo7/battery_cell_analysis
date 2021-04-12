@@ -156,7 +156,7 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     df_half = int(len(ldft)/2) # second half is outlier
     #for i in range(df_half, len(ldft)):
     #    lcols.extend(ldft[i].columns)
-    x = { "Battery " + str(i%2): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
+    x = { "Battery " + str(i% df_half): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
     #print(x)
     # lcols = list(set(lcols))
     # lcols.remove("mean")
@@ -216,7 +216,7 @@ def create_data_dir(directory="./data"):
 def create_graphs(df):
     fig = go.Figure()
     children = []
-   # print(len(df))
+    #print(len(df))
     for j in range(len(df)):
         #print(j)
         for k in df[j].columns[:-1]:
@@ -228,8 +228,7 @@ def create_graphs(df):
         if j < len(df)/2: # if not flag only sd df are passed, only update on anomalie title
             title = "Battery " + str(j)
         else:
-            title = "Battery " + str(j % 2) + " anomalies with sd= " + str(gsdev)
-            
+            title = "Battery " + str(j % int(len(df)/2)) + " anomalies with sd= " + str(gsdev)
         fig.update_layout(
             title={'text' : title,
                     'y':0.9,
@@ -445,16 +444,16 @@ page_2_layout = html.Div(children=[navbar,
               [Output('graphs', 'children'),
               Output('slider', 'children'),
               Output('statistics', 'children'),
-            Output('form_customer', 'children'),],
-              Input('upload-data', 'contents'),
+              Output('form_customer', 'children'),],
+              Input('upload-data', 'filename'),
               State('upload-data', 'filename'),
               State('upload-data', 'last_modified'),)
-def update_output(content, name, date):
+def update_output(nam1 ,name, date):
     children = []
     slider1 = []
     stats_table = []
     form_div = []
-    if content is not None:
+    if name is not None:
         db_string = ""
         db_string = name[0]
         try:
@@ -579,11 +578,13 @@ def update_output_list(uploaded_filenames, uploaded_file_contents):
     State("in_customer", 'value')
 )
 def update_export_div(n_clicks, input_value):
+    if os.path.exists("./tmp/.DS_Store"):
+            os.remove("./tmp/.DS_Store")
     if not n_clicks:
         raise PreventUpdate
     if input_value is not None:
         #customer = '"'+ input_value + '"'
-        customer = r'%s' % input_value
+        customer = input_value.replace(" ", "_")# r'%s' % input_value
         pdf = '"Zelldiagramm ' + input_value + '"'#+ " "+ str(gdf_stats.iloc[1]["Value"])
         try:
             print(gdbname)
@@ -598,8 +599,7 @@ def update_export_div(n_clicks, input_value):
         for f in files: 
             os.remove(f)
         shutil.move('./' +customer +'.zip', './data/')
-        if os.path.exists("./data/.DS_Store"):
-            os.remove("./data/.DS_Store")
+        
         return html.H6(customer + ' exported')
     return html.H3(" ")
 
