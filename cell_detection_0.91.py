@@ -11,10 +11,7 @@ import sys
 import argparse
 
 def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./data/", thick = 1):
-    if len(df) == 4: # 2 batteries makes 3 * 2 drawings
-        drawings = 3
-    else:
-        drawings == 4
+    drawings = len(df)-int(len(df)/2)+1
     fig, axs = plt.subplots(drawings,2, figsize=(16, 10), facecolor='w', edgecolor='k')
     fig.subplots_adjust(hspace = .4, wspace=.1)
     axs = axs.ravel()
