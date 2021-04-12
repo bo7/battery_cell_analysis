@@ -11,11 +11,16 @@ import sys
 import argparse
 
 def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./data/", thick = 1):
-    fig, axs = plt.subplots(len(df)-1,2, figsize=(16, 10), facecolor='w', edgecolor='k')
+    if len(df) == 4: # 2 batteries makes 3 * 2 drawings
+        drawings = 3
+    else:
+        drawings == 4
+    fig, axs = plt.subplots(drawings,2, figsize=(16, 10), facecolor='w', edgecolor='k')
     fig.subplots_adjust(hspace = .4, wspace=.1)
     axs = axs.ravel()
     n = -1 # skip last row with count for x-axis
-    half = (len(df))/2 # determines what is battery data first half, outlier second half preparing subplot title
+    half = int((len(df))/2) # determines what is battery data first half, outlier second half preparing subplot title
+    
     for i in range(len(df)):
         for k in df[i].columns[:n]: # n shows if last column must be skipped or not, due to preparedf dataframes or anomalie
             axs[i].plot(df[i][k].index,df[i][str(k)], label = str(k), linewidth= thick )
@@ -24,9 +29,9 @@ def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, 
             if excel:
                 df[i].to_excel(dir +customer+"_battery_" +str(i)+ ".xlsx")
         else:
-            axs[i].set_title("battery " +str(i % 2) + " " + "anomalie with sd = " +str(sdev))
+            axs[i].set_title("battery " +str(i % half) + " " + "anomalie with sd = " +str(sdev))
             if excel:
-                df[i].to_excel(dir + customer+"_battery_" +str(i % 2)+ "_anomalie_with_sd_" +str(sdev)+ ".xlsx")
+                df[i].to_excel(dir + customer+"_battery_" +str(i % half)+ "_anomalie_with_sd_" +str(sdev)+ ".xlsx")
         if len(df[i].columns) < 30:
             axs[i].legend(loc="upper right", title="Cell(s) to examine ", bbox_to_anchor=(1, 1), fontsize = 5)
     cell_text = []
@@ -36,8 +41,8 @@ def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, 
     axs[i+1].axis('tight')
     axs[i+1].axis('off')
     axs[i+1].table(cellText=cell_text,colLabels=column_labels,loc="center",cellLoc ='left', colLoc='left')
-    if i % 2 == 1:
-        fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
+    #if i % 2 == 1:
+    fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
     plt.suptitle(customer,fontsize=20)
     plt.savefig(dir + fn+ ".pdf")
     if show:
@@ -150,67 +155,7 @@ def create_data_lists(ldf,sdev):
         ldft.append(ldft[j][test]) # filter dataframe with list
     return ldft
 
-# def create_statistics(ldft,ldf, min_max, sdev=4, customer = 'Generic'):
-#     lcols = [] # columns with UID
-#     batt_list = []
-#     kind_list = []
-#     value_list = [] 
-
-#     df_half = int(len(ldft)/2) # second half is outlier
-#     for i in range(df_half, len(ldft)): #get outlier uids from columnnames
-#         lcols.extend(ldft[i].columns)
-
-#     lcols = list(set(lcols))
-#     lcols.remove("mean")
-#     lcols.remove("date_time")
-
-    
-#     date_list = [item for t in min_max for item in t]
-    
-#     kind_list.append("Customer")
-#     value_list.append(customer)
-#     kind_list.append("Creation date")
-#     value_list.append(date_list[1][:10])
-#     batt_list.append("-")
-#     kind_list.append("Finish date")
-#     value_list.append(date_list[2][:10])
-#     batt_list.append("-")
-#     kind_list.append("Start time")
-#     value_list.append(date_list[1][11:])
-#    # batt_list.append("-")
-#     kind_list.append("Stop time")
-#     value_list.append(date_list[2][11:])
-#     dt_start = datetime. strptime(date_list[1], '%d.%m.%Y %H:%M:%S')
-#     dt_end = datetime. strptime(date_list[2], '%d.%m.%Y %H:%M:%S')
-#     dt_diff = dt_end - dt_start  
-#     minutes = divmod(dt_diff.total_seconds(), 60) 
-#     #batt_list.append("-")
-#     kind_list.append("Duration minutes:")
-#     value_list.append(str(minutes[0]))
-#     kind_list.append("Duration seconds:")
-#     value_list.append(str(minutes[1]))
-#     #batt_list.append("-")
-#     kind_list.append("Cells per battery")
-#     value_list.append(date_list[4])
-#     #batt_list.append("-")
-#     kind_list.append("# Measurements")
-#     value_list.append(date_list[3])
-#     kind_list.append("Threshold anomalie detection with sd")
-#     value_list.append(sdev)
-#     if len(lcols) == 0:
-#         kind_list.append("Anomalies")
-#         value_list.append(0)
-#     else:
-#         for i in sorted(lcols):
-#             kind_list.append("Detected UID")
-#             value_list.append(i)
-
-#     df_statistics = pd.DataFrame(list(zip(kind_list, value_list)), 
-#                columns =[ 'Name', "Value"]) 
-    
-#     return df_statistics
 def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
-    
     #lcols = [] # columns with UID
     batt_list = []
     kind_list = []
@@ -219,7 +164,7 @@ def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
     df_half = int(len(ldft)/2) # second half is outlier
     #for i in range(df_half, len(ldft)):
     #    lcols.extend(ldft[i].columns)
-    x = { "Battery " + str(i%2): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
+    x = { "Battery " + str(i% df_half): ldft[i].columns.to_list() for i in range(df_half, len(ldft)) }
     #print(x)
     # lcols = list(set(lcols))
     # lcols.remove("mean")
