@@ -585,7 +585,9 @@ def update_output_list(uploaded_filenames, uploaded_file_contents):
 )
 def update_export_div(n_clicks, input_value):
     if os.path.exists("./tmp/.DS_Store"):
-            os.remove("./tmp/.DS_Store")
+        os.remove("./tmp/.DS_Store")
+    if os.path.exists("./data/.DS_Store"):
+        os.remove("./data/.DS_Store")
     if not n_clicks:
         raise PreventUpdate
     if input_value is not None:
