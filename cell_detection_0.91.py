@@ -11,9 +11,9 @@ import sys
 import argparse
 
 def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, df_statistics = [], excel=False, dir="./data/", thick = 1):
-    drawings = len(df)-int(len(df)/2)+1
-    fig, axs = plt.subplots(drawings,2, figsize=(16, 10), facecolor='w', edgecolor='k')
-    fig.subplots_adjust(hspace = .4, wspace=.1)
+    #drawings = len(df)-int(len(df)/2)+1
+    fig, axs = plt.subplots(len(df), figsize=(16, 10), facecolor='w', edgecolor='k')
+    fig.subplots_adjust(hspace = .6, wspace=.1)
     axs = axs.ravel()
     n = -1 # skip last row with count for x-axis
     half = int((len(df))/2) # determines what is battery data first half, outlier second half preparing subplot title
@@ -31,17 +31,21 @@ def create_graph(df,fn="Zelldiagramm", customer="Generic", show=True, sdev = 4, 
                 df[i].to_excel(dir + customer+"_battery_" +str(i % half)+ "_anomalie_with_sd_" +str(sdev)+ ".xlsx")
         if len(df[i].columns) < 30:
             axs[i].legend(loc="upper right", title="Cell(s) to examine ", bbox_to_anchor=(1, 1), fontsize = 5)
+    plt.suptitle(customer,fontsize=20)
+    plt.savefig(dir + fn+ ".pdf")
+    fig2 = plt.figure(dpi=80)
+    ax2 = fig2.add_subplot(1,1,1)
     cell_text = []
     for row in range(len(df_statistics)):
         cell_text.append(df_statistics.iloc[row])
     column_labels = df_statistics.columns
-    axs[i+1].axis('tight')
-    axs[i+1].axis('off')
-    axs[i+1].table(cellText=cell_text,colLabels=column_labels,loc="center",cellLoc ='left', colLoc='left')
+    ax2.axis('tight')
+    ax2.axis('off')
+    ax2.table(cellText=cell_text,colLabels=column_labels,loc="center",cellLoc ='left', colLoc='left')
     #if i % 2 == 1:
-    fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
+    #fig.delaxes(axs[i+2]) # remove empty drawing if printet figures are uneven
     plt.suptitle(customer,fontsize=20)
-    plt.savefig(dir + fn+ ".pdf")
+    plt.savefig(dir + fn+ " statistics.pdf")
     if show:
         plt.show()
     if excel:
