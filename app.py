@@ -56,6 +56,7 @@ def read_db(db):
     print(db)
     j = 0 # counter for battery numbers
     ldf = []
+    ldbfbox = []
     try:
         con = sqlite3.connect(db)
     except sqlite3.Error as e:
@@ -76,9 +77,9 @@ def read_db(db):
                     ON rt.record = sd.record 
         GROUP BY sd.Battery	   
     """)
-    rows2 =cur.fetchall()
+    rows2 =cur.fetchall() 
     print("sql2")
-    for row in rows:
+    for row in rows: # iterate over batteries
         df = pd.read_sql_query("""SELECT rt.date, 
         rt.time, 
         sd.battery, 
@@ -92,10 +93,43 @@ def read_db(db):
                 ON su.battery = sd.battery 
                     AND su.addr = sd.addr 
         WHERE  sd.u_v > 0 and su.battery = """ +str(j) ,   con)
+        
+        dfbox = pd.read_sql_query("""
+        SELECT rt.date 
+       || "_" 
+       || rt.time ascDate, 
+       su.uid, 
+       sd.u_v 
+FROM   record_time rt 
+       INNER JOIN scl_data sd 
+               ON rt.record = sd.record 
+       INNER JOIN scl_uid su 
+               ON su.battery = sd.battery 
+                  AND su.addr = sd.addr 
+WHERE  sd.u_v > 0 
+       AND su.battery = """ +str(j) + """ 
+       AND rt.date 
+           || "_" 
+           || rt.time IN (SELECT rt.date 
+                                 || "_" 
+                                 || rt.time 
+                          FROM   record_time rt 
+                                 INNER JOIN scl_data sd 
+                                         ON rt.record = sd.record 
+                                 INNER JOIN scl_uid su 
+                                         ON su.battery = sd.battery 
+                                            AND su.addr = sd.addr 
+                          WHERE  sd.u_v > 0 
+                                 AND su.battery = """ + str(j) + """  
+                          GROUP  BY rt.date, 
+                                    rt.time 
+                          ORDER  BY Max(sd.u_v) - Min(sd.u_v)DESC 
+                          LIMIT  1); """, con)
         j += 1
         ldf.append(df)
+        ldbfbox.append(dfbox)
     print("sql3")
-    return ldf,rows2 #rows2 = min max datetime per battery
+    return ldf,rows2, ldbfbox #rows2 = min max datetime per battery
 
 def find_outliers(dfT,sdev=4):
     res = []
@@ -261,6 +295,33 @@ def create_graphs(df):
         fig = go.Figure()
     return children
 
+def create_boxplot(ldfbox):
+    box_res = []
+    fig = go.Figure()
+    fig2 = go.Figure()
+    for i in range(len(ldfbox)):
+        fig.add_trace(go.Box(y=ldfbox[i]['U_V'], name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
+        fig2.add_trace(go.Histogram(x=ldfbox[i]['U_V'],name = "Battery " + str(i),text=ldfbox[i]['UID']))
+    fig.update_traces( boxpoints='all', # can also be outliers, or suspectedoutliers, or False
+            jitter=0.3, # add some jitter for a better separation between points
+            pointpos=-1.8, # relative position of points wrt box          
+            
+            )
+    fig.update_layout(
+    title="Boxplot "
+    )
+    fig2.update_layout(
+    title="Histogram "
+    )
+    # Overlay both histograms
+    fig2.update_layout(barmode='stack')
+    # Reduce opacity to see both histograms
+    fig2.update_traces(opacity=0.75)
+    box_res.append(dcc.Graph(id = 'div_box', figure = fig))
+    box_res.append(dcc.Graph(id = 'div_hist', figure = fig2))
+    return box_res
+ 
+
 def create_stats_table(df_stats):
     res = []
     res.append(html.H6("Statistics"))
@@ -393,6 +454,8 @@ page_1_layout = html.Div(children=[navbar,
                                      html.Div(children =[
                                      ], id = "slider"),
                                      html.Div(children = [
+                                           ], id = "boxplot"),
+                                     html.Div(children = [
                                            ], id = "form_customer"),
                                       html.Div(children = [
                                      ], id = "statistics"),
@@ -448,6 +511,7 @@ page_2_layout = html.Div(children=[navbar,
 @app.callback(
               [Output('graphs', 'children'),
               Output('slider', 'children'),
+               Output('boxplot', 'children'),
               Output('statistics', 'children'),
               Output('form_customer', 'children'),
               Output('loading-output-2', 'children')],
@@ -459,6 +523,7 @@ def update_output(nam1 ,name, date):
     slider1 = []
     stats_table = []
     form_div = []
+    box_div = []
     if name is not None:
         db_string = ""
         db_string = name[0]
@@ -466,7 +531,7 @@ def update_output(nam1 ,name, date):
             if 'db' in db_string:
                 global gdbname
                 gdbname = db_string
-                ldft, rows = read_db(db_string)
+                ldft, rows, ldfbox = read_db(db_string)
                 #ldft[0]["index"] = ldft[0].index
         except Exception as e:
             print(e)
@@ -480,6 +545,7 @@ def update_output(nam1 ,name, date):
         glists = ldft
         #print(df[0].head())
         children = create_graphs(df)
+        box_div = create_boxplot(ldfbox)
         stats_table = create_stats_table(df_stats)
         slider1.append(html.P())
         slider1.append(dcc.Slider(
@@ -498,7 +564,8 @@ def update_output(nam1 ,name, date):
         slider1.append(html.H5("")) 
         stats_table.append(html.H5("No Stats"))
         form_div.append("")
-    return children , slider1 , stats_table, form_div, html.H6('')
+        box_div.append("")
+    return children , slider1 , box_div, stats_table, form_div, html.H6('')
 
 @app.callback([Output({'type': 'graph', 'index': ALL}, 'figure'),
                Output('table', 'data'),
