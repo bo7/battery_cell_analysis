@@ -30,15 +30,16 @@ from flask import Flask, send_from_directory
 from os.path import basename
 import glob
 import shutil
+from os import walk
 
 UPLOAD_DIRECTORY = os.path.dirname(os.path.realpath(__file__))+"/data/"
 WORKING_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-print(os.path.dirname(os.path.realpath(__file__)))
+#print(os.path.dirname(os.path.realpath(__file__)))
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
-
-
+_, _, filenames2 = next(walk("./data"))
+ 
 
 def prepare_df(df):
     df["date_time"] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
@@ -95,7 +96,10 @@ def read_db(db):
         WHERE  sd.u_v > 0 and su.battery = """ +str(j) ,   con)
         
         dfbox = pd.read_sql_query("""
-        SELECT rt.date 
+        SELECT 
+        rt.date, 
+        rt.time, 
+        rt.date 
        || "_" 
        || rt.time ascDate, 
        su.uid, 
@@ -168,6 +172,7 @@ def ret_anomalies_as_list_index(df,sdev=4):
 
 def create_data_lists(ldf,sdev):
     ldft = []
+    ldfuid = []
     for j in range(len(ldf)):
         ldft.append(prepare_df(ldf[j]))
     #ldft[0].to_excel("create_data")
@@ -178,7 +183,8 @@ def create_data_lists(ldf,sdev):
         test.append('mean') # 
         test.append('date_time')
         ldft.append(ldft[j][test]) # filter dataframe with list
-    return ldft
+        ldfuid.append([ldf[j].UID])
+    return ldft, ldfuid
 
 
 def create_statistics(ldft, min_max, sdev=4, customer = 'Generic'):
@@ -247,7 +253,7 @@ def create_data_dir(directory="./data"):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def create_graphs(df):
+def create_graphs(df,dfuid):
     fig = go.Figure()
     children = []
     #print(len(df))
@@ -258,7 +264,7 @@ def create_graphs(df):
             fig.add_trace(go.Scatter(x=df[j].index, y=df[j][col_name],
                         mode='lines', # 'lines' or 'markers'
                         name=col_name,
-                        line_width=.5 ))
+                        line_width=.5, ))
         if j < len(df)/2: # if not flag only sd df are passed, only update on anomalie title
             title = "Battery " + str(j)
         else:
@@ -278,17 +284,18 @@ def create_graphs(df):
                 size=16,
                 color="RebeccaPurple"
             ))
-        fig.update_yaxes(showgrid=True, zeroline=False, showticklabels=True,
-                 showspikes=True, spikemode='across', spikesnap='cursor', showline=True, spikedash='solid'
-                 ,spikethickness=0.5)
-
-        fig.update_xaxes(showgrid=True, zeroline=False, rangeslider_visible=False, showticklabels=True,
+        fig.update_yaxes(showgrid=False , zeroline=False, showticklabels=True,
                  showspikes=True, spikemode='across', spikesnap='cursor', showline=True, spikedash='solid',spikethickness=0.5)
 
-        fig.update_layout(hoverdistance=0)
-        fig.update_traces(xaxis='x', hoverinfo='none')
+        fig.update_xaxes(showgrid=False, zeroline=False, rangeslider_visible=False, showticklabels=True,
+                 showspikes=True, spikemode='across', spikesnap='cursor', showline=False, spikedash='solid',spikethickness=0.5)
+
+        
+        fig.update_traces(xaxis='x' ,hoverinfo='text')
+        fig.update_layout(hoverdistance=0, hovermode  = 'x')
         if j < len(df)/2:
             fig.update_layout(showlegend=False)
+            fig.update_traces(text = dfuid[j], hovertext=dfuid[j])
             children.append(dcc.Graph(id='graph-{}'.format(j),figure=fig))
         else:
             children.append(dcc.Graph( id={'type': 'graph','index': j},figure=fig))
@@ -297,15 +304,23 @@ def create_graphs(df):
 
 def create_boxplot(ldfbox):
     box_res = []
+    helpdf = pd.DataFrame()
     fig = go.Figure()
     fig2 = go.Figure()
-    for i in range(len(ldfbox)):
-        fig.add_trace(go.Box(y=ldfbox[i]['U_V'], name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
-        fig2.add_trace(go.Histogram(x=ldfbox[i]['U_V'],name = "Battery " + str(i),text=ldfbox[i]['UID']))
-    fig.update_traces( boxpoints='all', # can also be outliers, or suspectedoutliers, or False
+    cnt_batteries = len(ldfbox)
+    if cnt_batteries == 2:
+        for i in range(len(ldfbox)):
+            if i == 0:
+                helpdf['U_V'] = gsql[i+1][(gsql[i+1]['Date'] == ldfbox[i]['Date'][0]) & (gsql[i+1]['Time'] == ldfbox[0]['Time'][0]) ]['U_V']
+            else:
+                helpdf['U_V'] = gsql[i-1][(gsql[i-1]['Date'] == ldfbox[i]['Date'][0]) & (gsql[i-1]['Time'] == ldfbox[0]['Time'][0]) ]['U_V']
+            print(helpdf)
+            fig.add_trace(go.Box(y=ldfbox[i]['U_V']))#, name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
+            fig.add_trace(go.Box(y=helpdf['U_V']))#, name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
+            fig2.add_trace(go.Histogram(x=ldfbox[i]['U_V'],name = "Battery " + str(i),text=ldfbox[i]['UID']))
+        fig.update_traces( boxpoints='all', # can also be outliers, or suspectedoutliers, or False
             jitter=0.3, # add some jitter for a better separation between points
             pointpos=-1.8, # relative position of points wrt box          
-            
             )
     fig.update_layout(
     title="Boxplot "
@@ -367,6 +382,7 @@ gsdev = 5
 glists = []
 gdf_stats = pd.DataFrame()
 gdbname = ""
+gsql = [] # sql data from select 
 ########################
 
 form = dbc.Jumbotron(
@@ -429,13 +445,19 @@ page_1_layout = html.Div(children=[navbar,
                                    # html.H2('Sileo Cell Analysis'),
                                       
                                      
-                                    dcc.Upload(
-                                        id="upload-data",
-                                        children=html.Div(
-                                           [dbc.Button("Select DB",  id="upload-button", outline=True, size ="lg", color="primary", className="mr-1")]
-                                        ),
-                                        
-                                        multiple=True,
+                                    dcc.Dropdown(
+                                            id='file-dropdown',
+                                            options=[
+                                                {'label':name[-8:], 'value':name} for name in filenames2
+                                            ],
+                                           
+                                            style = dict(
+                                            width = '100%',
+                                            display = 'inline-block',
+                                            verticalAlign = "middle",
+                                            backgroundColor ='green',
+                                            color = 'green'
+                                            ),
                                         ),
                                         html.Div(id='output-data-upload'),
                                        # html.Div(children = [
@@ -515,10 +537,9 @@ page_2_layout = html.Div(children=[navbar,
               Output('statistics', 'children'),
               Output('form_customer', 'children'),
               Output('loading-output-2', 'children')],
-              Input('upload-data', 'filename'),
-              State('upload-data', 'filename'),
-              State('upload-data', 'last_modified'),)
-def update_output(nam1 ,name, date):
+              dash.dependencies.Input('file-dropdown', 'value'),
+              dash.dependencies.State("file-dropdown", "value"))
+def update_output(name2, name):
     children = []
     slider1 = []
     stats_table = []
@@ -526,17 +547,19 @@ def update_output(nam1 ,name, date):
     box_div = []
     if name is not None:
         db_string = ""
-        db_string = name[0]
+        db_string = name #[0]
         try:
             if 'db' in db_string:
                 global gdbname
                 gdbname = db_string
                 ldft, rows, ldfbox = read_db(db_string)
+                global gsql
+                gsql = ldft
                 #ldft[0]["index"] = ldft[0].index
         except Exception as e:
             print(e)
 
-        df = create_data_lists(ldft,gsdev)
+        df, dfuid = create_data_lists(ldft,gsdev)
         df_stats = create_statistics(df, rows, sdev=gsdev, customer = 'Generic')
         #print(df)
         global grows
@@ -544,7 +567,7 @@ def update_output(nam1 ,name, date):
         global glists 
         glists = ldft
         #print(df[0].head())
-        children = create_graphs(df)
+        children = create_graphs(df,dfuid)
         box_div = create_boxplot(ldfbox)
         stats_table = create_stats_table(df_stats)
         slider1.append(html.P())
@@ -579,11 +602,11 @@ def change_slider(value):
     if value is None:
         return dash.no_update
     if value is not None:
-        ldft = create_data_lists(glists,value)
+        ldft, dfuid = create_data_lists(glists,value)
         global gsdev
         gsdev = value
         df_stats = create_statistics(ldft, grows, sdev=gsdev, customer = 'Generic')
-        children = create_graphs(ldft)
+        children = create_graphs(ldft,dfuid)
         stats_table = create_stats_table(df_stats)
         #print(df_stats)
         #for count, fig in enumerate(children): # step through all graphs doesnt matter of battery count
