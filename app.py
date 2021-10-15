@@ -93,7 +93,7 @@ def read_db(db):
         INNER JOIN scl_uid su 
                 ON su.battery = sd.battery 
                     AND su.addr = sd.addr 
-        WHERE  sd.u_v > 0 and su.battery = """ +str(j) ,   con)
+        WHERE  sd.u_v > 0 and su.battery = """ +str(j) + """ order by 1,2 """ ,   con)
         
         dfbox = pd.read_sql_query("""
         SELECT 
@@ -308,16 +308,23 @@ def create_boxplot(ldfbox):
     fig = go.Figure()
     fig2 = go.Figure()
     cnt_batteries = len(ldfbox)
+    box_name = ""
+    box_text = ""
+    #battery 0 is plottet for biggest delta on voltage for timestamp battery 1 is compared same timestamp and vice versa
     if cnt_batteries == 2:
         for i in range(len(ldfbox)):
             if i == 0:
                 helpdf['U_V'] = gsql[i+1][(gsql[i+1]['Date'] == ldfbox[i]['Date'][0]) & (gsql[i+1]['Time'] == ldfbox[0]['Time'][0]) ]['U_V']
+                box_name = "Battery " + str(i+1) + " " +ldfbox[i]['ascDate'][0] 
+                box_text =ldfbox[i+1]['UID']
             else:
                 helpdf['U_V'] = gsql[i-1][(gsql[i-1]['Date'] == ldfbox[i]['Date'][0]) & (gsql[i-1]['Time'] == ldfbox[0]['Time'][0]) ]['U_V']
-            print(helpdf)
-            fig.add_trace(go.Box(y=ldfbox[i]['U_V']))#, name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
-            fig.add_trace(go.Box(y=helpdf['U_V']))#, name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
-            fig2.add_trace(go.Histogram(x=ldfbox[i]['U_V'],name = "Battery " + str(i),text=ldfbox[i]['UID']))
+                box_name = "Battery " + str(i-1) + " " +ldfbox[i]['ascDate'][0] 
+                box_text =ldfbox[i-1]['UID']
+            fig.add_trace(go.Box(y=ldfbox[i]['U_V'] ,name = "Battery " + str(i) + " " +ldfbox[i]['ascDate'][0] ,text=ldfbox[i]['UID']))
+            fig.add_trace(go.Box(y=helpdf['U_V'], name = box_name, text = box_text))
+            fig2.add_trace(go.Histogram(x=ldfbox[i]['U_V']))#,name = "Battery " + str(i),text=ldfbox[i]['UID']))
+            fig2.add_trace(go.Histogram(x=helpdf['U_V']))#['U_V'],name = "Battery " + str(i),text=ldfbox[i]['UID']))
         fig.update_traces( boxpoints='all', # can also be outliers, or suspectedoutliers, or False
             jitter=0.3, # add some jitter for a better separation between points
             pointpos=-1.8, # relative position of points wrt box          
@@ -545,6 +552,9 @@ def update_output(name2, name):
     stats_table = []
     form_div = []
     box_div = []
+    global filenames2
+    print( filenames2) 
+    #filenames2 = next(walk("./data"))
     if name is not None:
         db_string = ""
         db_string = name #[0]
