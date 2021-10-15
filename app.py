@@ -543,7 +543,8 @@ page_2_layout = html.Div(children=[navbar,
                Output('boxplot', 'children'),
               Output('statistics', 'children'),
               Output('form_customer', 'children'),
-              Output('loading-output-2', 'children')],
+              Output('loading-output-2', 'children'),
+              Output('file-dropdown', 'options')],
               dash.dependencies.Input('file-dropdown', 'value'),
               dash.dependencies.State("file-dropdown", "value"))
 def update_output(name2, name):
@@ -553,8 +554,11 @@ def update_output(name2, name):
     form_div = []
     box_div = []
     global filenames2
-    print( filenames2) 
+    #print( filenames2) 
+    print(name)
     #filenames2 = next(walk("./data"))
+    _, _, filenames3 = next(walk("./data"))
+
     if name is not None:
         db_string = ""
         db_string = name #[0]
@@ -598,7 +602,7 @@ def update_output(name2, name):
         stats_table.append(html.H5("No Stats"))
         form_div.append("")
         box_div.append("")
-    return children , slider1 , box_div, stats_table, form_div, html.H6('')
+    return children , slider1 , box_div, stats_table, form_div, html.H6(''), [{'label': i, 'value': i} for i in filenames3]
 
 @app.callback([Output({'type': 'graph', 'index': ALL}, 'figure'),
                Output('table', 'data'),

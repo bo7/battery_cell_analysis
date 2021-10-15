@@ -634,3 +634,8 @@ Taken from https://codepen.io/chriddyp/pen/bWLwgP.css
   ::-webkit-scrollbar-thumb:hover {
     background: #d8d8d870 !important;
   }
+  .Select--multi .Select-value {
+    background-color: green;
+    border-color: #e3a700;
+    color: orange;
+}
